@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# env
+.env.local
+.env
+
+# generated PDFs
+generated/
+
+# system
+.DS_Store
+Thumbs.db
