@@ -15,6 +15,7 @@ interface FormFields {
   companyPhone: string;
   companyFocus: string;
   companyTech: string;
+  ausbildungStart: string;
   mode: "cover-letter" | "full-resume";
 }
 
@@ -37,6 +38,7 @@ const DEFAULT_FIELDS: FormFields = {
   companyPhone: "",
   companyFocus: "",
   companyTech: "",
+  ausbildungStart: "",
   mode: "cover-letter",
 };
 
@@ -118,7 +120,7 @@ export default function Home() {
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const fileName = decodeURIComponent(
-        res.headers.get("X-File-Name") ?? "Anschreiben.pdf"
+        res.headers.get("X-File-Name") ?? "Anschreiben.pdf",
       );
 
       setState({ status: "success", blobUrl, fileName });
@@ -148,7 +150,9 @@ export default function Home() {
     <main className="max-w-2xl mx-auto px-4 py-10">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Anschreiben Generator</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Anschreiben Generator
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
           Fülle die Felder aus und lade dein fertiges PDF herunter.
         </p>
@@ -170,33 +174,15 @@ export default function Home() {
             placeholder="z.B. Musterfirma GmbH"
             disabled={isLoading}
           />
-          <Field
-            label="Straße &amp; Hausnummer"
-            name="companyStreet"
-            value={fields.companyStreet}
-            onChange={setField}
-            placeholder="z.B. Musterstraße 12"
-            disabled={isLoading}
-          />
-          <Field
-            label="PLZ &amp; Ort"
-            name="companyZipCity"
-            value={fields.companyZipCity}
-            onChange={setField}
-            placeholder="z.B. 10115 Berlin"
-            disabled={isLoading}
-          />
-        </section>
-
-        {/* ── Contact ── */}
-        <section className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
             Ansprechperson (optional)
           </h2>
 
           <div className="flex gap-2 items-end">
             <div className="w-1/3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Anrede</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Anrede
+              </label>
               <select
                 value={fields.contactSalutation}
                 onChange={(e) => setField("contactSalutation", e.target.value)}
@@ -219,6 +205,26 @@ export default function Home() {
               />
             </div>
           </div>
+          <Field
+            label="Straße &amp; Hausnummer"
+            name="companyStreet"
+            value={fields.companyStreet}
+            onChange={setField}
+            placeholder="z.B. Musterstraße 12"
+            disabled={isLoading}
+          />
+          <Field
+            label="PLZ &amp; Ort"
+            name="companyZipCity"
+            value={fields.companyZipCity}
+            onChange={setField}
+            placeholder="z.B. 10115 Berlin"
+            disabled={isLoading}
+          />
+        </section>
+
+        {/* ── Contact ── */}
+        <section className="space-y-3">
           <Field
             label="E-Mail des Unternehmens"
             name="companyEmail"
@@ -252,6 +258,14 @@ export default function Home() {
             placeholder="z.B. Fachinformatiker für Anwendungsentwicklung"
             disabled={isLoading}
           />
+          <Field
+            label="Ausbildungsbeginn (optional)"
+            name="ausbildungStart"
+            value={fields.ausbildungStart}
+            onChange={setField}
+            placeholder="z.B. September 2026"
+            disabled={isLoading}
+          />
         </section>
 
         {/* ── Motivation (Optional) ── */}
@@ -270,7 +284,8 @@ export default function Home() {
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Wird eingefügt als: &quot;Besonders Ihr Fokus auf <strong>[Eingabe]</strong> hat mein Interesse geweckt.&quot;
+              Wird eingefügt als: &quot;Besonders Ihr Fokus auf{" "}
+              <strong>[Eingabe]</strong> hat mein Interesse geweckt.&quot;
             </p>
           </div>
 
@@ -284,11 +299,11 @@ export default function Home() {
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Wird eingefügt als: &quot;Ihre Arbeit mit <strong>[Eingabe]</strong>&quot;
+              Wird eingefügt als: &quot;Ihre Arbeit mit{" "}
+              <strong>[Eingabe]</strong>&quot;
             </p>
           </div>
         </section>
-
 
         {/* ── Mode + submit ── */}
         <div className="flex items-end gap-4">
@@ -299,13 +314,18 @@ export default function Home() {
             <select
               value={fields.mode}
               onChange={(e) =>
-                setField("mode", e.target.value as "cover-letter" | "full-resume")
+                setField(
+                  "mode",
+                  e.target.value as "cover-letter" | "full-resume",
+                )
               }
               disabled={isLoading}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="cover-letter">Nur Anschreiben</option>
-              <option value="full-resume">Vollständige Bewerbung (ersetzt Seite 2)</option>
+              <option value="full-resume">
+                Vollständige Bewerbung (ersetzt Seite 2)
+              </option>
             </select>
           </div>
 
@@ -385,8 +405,8 @@ export default function Home() {
           </div>
 
           <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden h-[600px] w-full bg-gray-50">
-            <iframe 
-              src={`${state.blobUrl}#view=FitH`} 
+            <iframe
+              src={`${state.blobUrl}#view=FitH`}
               title="PDF Vorschau"
               className="w-full h-full border-none"
             />

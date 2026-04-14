@@ -20,6 +20,9 @@ export const FormDataSchema = z.object({
   companyFocus: z.string().optional().default(""),
   companyTech: z.string().optional().default(""),
 
+  // Optional job info
+  ausbildungStart: z.string().optional().default(""),
+
   // Optional location
   city: z.string().optional().default(""),
 
