@@ -33,7 +33,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let fileName: string;
 
     if (formData.mode === "full-resume") {
-      finalPdfBytes = await replacePageTwo(coverLetterBytes);
+      finalPdfBytes = await replacePageTwo(coverLetterBytes, formData.branch);
       fileName = `Bewerbungsunterlagen_${companySlug}_Said_Fateh.pdf`;
     } else {
       finalPdfBytes = coverLetterBytes;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const FormDataSchema = z.object({
+  branch: z.enum(["informatik", "gastronomie"]),
   // Required
   companyName: z.string().min(1, "Firmenname ist erforderlich"),
   jobTitle: z.string().min(1, "Stellenbezeichnung ist erforderlich"),
@@ -19,6 +20,11 @@ export const FormDataSchema = z.object({
   // Optional motivation fields
   companyFocus: z.string().optional().default(""),
   companyTech: z.string().optional().default(""),
+
+  // Gastronomy specific
+  department: z.string().optional().default(""),
+  companyBesonderheit: z.string().optional().default(""),
+  personalMotivation: z.string().optional().default(""),
 
   // Optional job info
   ausbildungStart: z.string().optional().default(""),

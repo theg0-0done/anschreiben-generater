@@ -96,8 +96,11 @@ export async function generateCoverLetterPdf(formData: FormData): Promise<Uint8A
     "31000 Sefrou, Marokko",
     "fatehsaid05@gmail.com",
     "+212 762 895 481",
-    "https://fatehsaid.com/de",
   ];
+  if (formData.branch === "informatik") {
+    senderLines.push("https://fatehsaid.com/de");
+  }
+
   for (const line of senderLines) {
     drawRight(ctx, line, MARGIN_RIGHT, y, SMALL);
     y -= lh(SMALL);

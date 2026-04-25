@@ -8,13 +8,21 @@ import path from "path";
  *
  * Base PDF location: assets/Bewerbungsunterlagen.pdf (inside project root)
  */
-export async function replacePageTwo(coverLetterBytes: Uint8Array): Promise<Uint8Array> {
-  const basePdfPath = path.join(process.cwd(), "assets", "Bewerbungsunterlagen.pdf");
+/**
+ * Replace page 2 (index 1) of the base PDF with the generated cover letter page.
+ * For Informatik: assets/Bewerbungsunterlagen.pdf
+ * For Gastronomie: Prepends cover letter to assets/Gastronomie Lebenslauf.pdf
+ */
+export async function replacePageTwo(coverLetterBytes: Uint8Array, branch: "informatik" | "gastronomie" = "informatik"): Promise<Uint8Array> {
+  const baseFile = branch === "gastronomie" 
+    ? "Gastronomie Lebenslauf.pdf" 
+    : "Bewerbungsunterlagen.pdf";
+    
+  const basePdfPath = path.join(process.cwd(), "assets", baseFile);
 
   if (!fs.existsSync(basePdfPath)) {
     throw new Error(
-      "assets/Bewerbungsunterlagen.pdf not found. " +
-        "Place your base Bewerbungsunterlagen PDF at assets/Bewerbungsunterlagen.pdf in the project root."
+      `assets/${baseFile} not found. Please ensure it exists in the assets folder.`
     );
   }
 
@@ -22,6 +30,20 @@ export async function replacePageTwo(coverLetterBytes: Uint8Array): Promise<Uint
   const basePdf = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
   const coverPdf = await PDFDocument.load(coverLetterBytes);
 
+  if (branch === "gastronomie") {
+    // For Gastronomy, we likely want to PREPEND the cover letter to the resume
+    const newDoc = await PDFDocument.create();
+    const [coverPage] = await newDoc.copyPages(coverPdf, [0]);
+    newDoc.addPage(coverPage);
+    
+    const basePages = await newDoc.copyPages(basePdf, basePdf.getPageIndices());
+    for (const p of basePages) {
+      newDoc.addPage(p);
+    }
+    return newDoc.save({ useObjectStreams: false });
+  }
+
+  // Informatik logic: Replace page 2
   const totalPages = basePdf.getPageCount();
   if (totalPages < 2) {
     throw new Error(
@@ -29,13 +51,9 @@ export async function replacePageTwo(coverLetterBytes: Uint8Array): Promise<Uint
     );
   }
 
-  // Copy the single cover letter page into the base document
   const [newPage] = await basePdf.copyPages(coverPdf, [0]);
-
-  // Remove old page 2 (index 1), insert new one in its place
   basePdf.removePage(1);
   basePdf.insertPage(1, newPage);
 
-  // useObjectStreams: false keeps the file smaller and more compatible
   return basePdf.save({ useObjectStreams: false });
 }
