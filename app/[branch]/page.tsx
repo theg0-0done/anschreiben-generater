@@ -240,26 +240,6 @@ export default function BranchPage({
                 disabled={isLoading}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="Straße &amp; Hausnummer"
-                  name="companyStreet"
-                  value={fields.companyStreet}
-                  onChange={setField}
-                  placeholder="z.B. Musterstraße 12"
-                  disabled={isLoading}
-                />
-                <Field
-                  label="PLZ &amp; Ort (Standort)"
-                  name="companyZipCity"
-                  value={fields.companyZipCity}
-                  onChange={setField}
-                  required={branch === "gastronomie"}
-                  placeholder="z.B. 10115 Berlin"
-                  disabled={isLoading}
-                />
-              </div>
-
               <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
                 Ansprechperson (optional)
               </h2>
@@ -292,6 +272,30 @@ export default function BranchPage({
                     disabled={isLoading}
                   />
                 </div>
+              </div>
+
+               <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
+                Location
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  label="Straße &amp; Hausnummer"
+                  name="companyStreet"
+                  value={fields.companyStreet}
+                  onChange={setField}
+                  placeholder="z.B. Musterstraße 12"
+                  disabled={isLoading}
+                />
+                <Field
+                  label="PLZ &amp; Ort (Standort)"
+                  name="companyZipCity"
+                  value={fields.companyZipCity}
+                  onChange={setField}
+                  required={branch === "gastronomie"}
+                  placeholder="z.B. 10115 Berlin"
+                  disabled={isLoading}
+                />
               </div>
             </section>
 
@@ -421,7 +425,8 @@ export default function BranchPage({
                     disabled={isLoading}
                   />
                   <p className="text-xs text-gray-500 -mt-2">
-                    Eingabe: "beeindruckt mich Ihr Fokus auf <strong>[Eingabe]</strong>"
+                    Eingabe: "beeindruckt mich Ihr Fokus auf{" "}
+                    <strong>[Eingabe]</strong>"
                   </p>
                 </div>
               )}

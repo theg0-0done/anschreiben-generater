@@ -15,7 +15,7 @@ import path from "path";
  */
 export async function replacePageTwo(coverLetterBytes: Uint8Array, branch: "informatik" | "gastronomie" = "informatik"): Promise<Uint8Array> {
   const baseFile = branch === "gastronomie" 
-    ? "Gastronomie Lebenslauf.pdf" 
+    ? "Bewerbungsunterlagen_Hotelfachmann_Said_Fateh.pdf" 
     : "Bewerbungsunterlagen.pdf";
     
   const basePdfPath = path.join(process.cwd(), "assets", baseFile);
@@ -30,20 +30,6 @@ export async function replacePageTwo(coverLetterBytes: Uint8Array, branch: "info
   const basePdf = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
   const coverPdf = await PDFDocument.load(coverLetterBytes);
 
-  if (branch === "gastronomie") {
-    // For Gastronomy, we likely want to PREPEND the cover letter to the resume
-    const newDoc = await PDFDocument.create();
-    const [coverPage] = await newDoc.copyPages(coverPdf, [0]);
-    newDoc.addPage(coverPage);
-    
-    const basePages = await newDoc.copyPages(basePdf, basePdf.getPageIndices());
-    for (const p of basePages) {
-      newDoc.addPage(p);
-    }
-    return newDoc.save({ useObjectStreams: false });
-  }
-
-  // Informatik logic: Replace page 2
   const totalPages = basePdf.getPageCount();
   if (totalPages < 2) {
     throw new Error(

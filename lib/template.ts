@@ -20,18 +20,17 @@ const GASTRONOMY_BODY_TEMPLATE = `{{greeting}}
 
 {{openingParagraph}}
 
-Durch meine praktischen Erfahrungen — unter anderem bei PRIMOREST GmbH, der Bäckerei EL NAKHIL und zuletzt bei NIRAMAR GmbH — habe ich fundierte Kenntnisse in den Bereichen Kundenzufriedenheit, Beschwerdemanagement und Qualitätskontrolle erworben. Ich bin sicher im Umgang mit Kassensystemen, der Produktpräsentation sowie den Abläufen im Service. Zudem bin ich bestens mit HACCP-Standards und der Lebensmittelhygiene vertraut, was für reibungslose Abläufe in Ihrem Haus unerlässlich ist. Zuverlässigkeit, Belastbarkeit und eine ausgeprägte Gastorientierung sind für mich selbstverständlich.
+Durch meine praktischen Erfahrungen – unter anderem bei der PRIMOREST GmbH, der Bäckerei EL NAKHIL und zuletzt bei der NIRAMAR GmbH – habe ich fundierte Kenntnisse in den Bereichen Kundenzufriedenheit, Beschwerdemanagement und Qualitätskontrolle erworben. Ich bin sicher im Umgang mit Kassensystemen, der Produktpräsentation sowie den Abläufen im Service. Zudem bin ich bestens mit HACCP-Standards und der Lebensmittelhygiene vertraut, was für reibungslose Abläufe in Ihrem Haus unerlässlich ist. Zuverlässigkeit, Belastbarkeit und eine ausgeprägte Gastorientierung sind für mich selbstverständlich.
 
-Neben meiner Muttersprache Arabisch beherrsche ich Englisch sehr gut in Wort und Schrift. Meine Deutschkenntnisse habe ich durch das ÖSD-Zertifikat B2 (ÖSD Institut) nachgewiesen und baue diese aktuell aktiv auf C1-Niveau aus. Zudem verfüge ich über Grundkenntnisse in Französisch. Diese Mehrsprachigkeit ermöglicht mir eine professionelle Betreuung internationaler Gäste – eine Kompetenz, die ich besonders im Hotelumfeld gewinnbringend einsetzen möchte.
+Neben meiner Muttersprache Arabisch beherrsche ich Englisch sehr gut in Wort und Schrift. Meine Deutschkenntnisse habe ich durch das ÖSD-Zertifikat B2 (ausgestellt März 2026) nachgewiesen und baue diese aktiv auf C1-Niveau aus. Zudem verfüge ich über Grundkenntnisse in Französisch. Diese Mehrsprachigkeit ermöglicht mir eine professionelle Betreuung internationaler Gäste – eine Kompetenz, die ich besonders im Hotelumfeld gewinnbringend einsetzen möchte.
 
-Nach meinem Abitur im Jahr 2024 strebe ich nun eine fundierte Ausbildung an und stehe Ihnen ab dem {{ausbildungStart}} zur Verfügung. Ich bin ein motivierter Teamplayer mit echter Leidenschaft für die Hotellerie und freue mich darauf, mein Engagement in Ihr Unternehmen einzubringen.
+Nach meinem Abitur im Jahr 2024 strebe ich nun eine fundierte Ausbildung an und {{availabilityClause}}. Ich bin ein motivierter Teamplayer mit echter Leidenschaft für die Gastronomie und Hotellerie und freue mich darauf, mein Engagement und meine Begeisterung in Ihr Haus einzubringen.
 
 Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.
 
-Mit freundlichen Grüßen,
+Mit freundlichen Grüßen
 
-Said Fateh
-+212 762 895481 | fatehsaid05@gmail.com`;
+Said Fateh`;
 
 /** Derive salutation from contact person field. */
 function buildSalutation(salutation: string, contactPerson: string): string {
@@ -87,25 +86,34 @@ function buildOpeningParagraph(
   department?: string
 ): string {
   if (branch === "gastronomie") {
-    // Combine specialty (e.g. "modernes Business-") and department (e.g. "Hotel")
     const specialty = companyBesonderheit?.trim() || "";
-    const dept = department?.trim() || "Unternehmen";
-    
-    // Ensure we don't double up if user typed the dept in the specialty field
-    const combinedType = specialty.toLowerCase().includes(dept.toLowerCase())
-      ? specialty
-      : `${specialty} ${dept}`.trim();
+    const dept = department?.trim() || "";
 
-    const introPart1 = `habe ich mich über Ihr ${combinedType} informiert`;
+    // Build a natural description of the establishment
+    let establishmentDesc: string;
+    if (specialty && dept) {
+      // Avoid doubling if specialty already contains dept name
+      establishmentDesc = specialty.toLowerCase().includes(dept.toLowerCase())
+        ? specialty
+        : `${specialty} ${dept}`;
+    } else if (specialty) {
+      establishmentDesc = specialty;
+    } else if (dept) {
+      establishmentDesc = dept;
+    } else {
+      establishmentDesc = "Unternehmen";
+    }
+
+    const introPart1 = `habe ich mich eingehend über Ihr ${establishmentDesc} informiert`;
 
     const introPart2 = personalMotivation?.trim()
       ? `Besonders beeindruckt mich Ihr Fokus auf ${personalMotivation.trim()} – ein Umfeld, in dem ich meine Leidenschaft für erstklassige Gastfreundschaft voll entfalten möchte`
-      : `Besonders Ihr Ruf als erstklassiger Ausbildungsbetrieb und Ihr hoher Anspruch an die Gästebetreuung haben mich sofort begeistert`;
+      : `Besonders Ihr Ruf als erstklassiger Ausbildungsbetrieb und Ihr hoher Anspruch an die Gästebetreuung haben mich sofort angesprochen`;
 
     return (
-      `mit großem Interesse ${introPart1}. ${ensureSentence(introPart2)}. ` +
+      `Mit großem Interesse ${introPart1}. ${ensureSentence(introPart2)}. ` +
       `Die Aussicht, Teil Ihres professionellen Teams zu werden und gemeinsam unvergessliche Erlebnisse für Ihre Gäste zu schaffen, motiviert mich außerordentlich. ` +
-      `Daher bewerbe ich mich voller Energie und Begeisterung um einen Ausbildungsplatz als ${jobTitle} in Ihrem Unternehmen.`
+      `Daher bewerbe ich mich voller Überzeugung um einen Ausbildungsplatz als ${jobTitle} in Ihrem Haus.`
     );
   }
 
@@ -172,12 +180,17 @@ export function fillTemplate(data: FormData): FilledTemplate {
       data.department
     );
 
+    // Build natural availability sentence based on whether a start date was provided
+    const availabilityClause = data.ausbildungStart?.trim()
+      ? `stehe Ihnen ab dem ${data.ausbildungStart.trim()} zur Verfügung`
+      : `stehe Ihnen zeitnah zur Verfügung`;
+
     const body = GASTRONOMY_BODY_TEMPLATE
       .replace("{{greeting}}", salutation)
       .replace("{{openingParagraph}}", openingParagraph)
       .replace(/{{companyName}}/g, data.companyName)
       .replace("{{departmentInfo}}", "")
-      .replace("{{ausbildungStart}}", data.ausbildungStart?.trim() || "[Startdatum]");
+      .replace("{{availabilityClause}}", availabilityClause);
 
     const subject = buildSubject(data.jobTitle, data.branch);
     const subject2 = buildSubject2(
