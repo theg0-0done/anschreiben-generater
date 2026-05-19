@@ -10,7 +10,7 @@ In zwei Schülerpraktika habe ich erste reale IT-Erfahrungen gesammelt: Bei CARG
 
 Mein Abitur in den Experimentellen Wissenschaften (Schwerpunkt Physik, Gymnasium Sidi Lahsen El Youssi, Sefrou) hat mir analytisches Denkvermögen und eine strukturierte Arbeitsweise vermittelt. Ich spreche Arabisch (Muttersprache), Deutsch (B2), Englisch (sehr gut) und Französisch – und bringe Eigeninitiative, Teamfähigkeit und echte Begeisterung für IT mit. Weitere Arbeitsproben und eigene Projekte finden Sie auf meinem Portfolio unter fatehsaid.com/de.
 
-Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.
+Für einen Ausbildungsbeginn stehe ich Ihnen ab sofort zur Verfügung. Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.
 
 Mit freundlichen Grüßen
 
@@ -24,7 +24,7 @@ Durch meine praktischen Erfahrungen – unter anderem bei der PRIMOREST GmbH, de
 
 Neben meiner Muttersprache Arabisch beherrsche ich Englisch sehr gut in Wort und Schrift. Meine Deutschkenntnisse habe ich durch das ÖSD-Zertifikat B2 (ausgestellt März 2026) nachgewiesen und baue diese aktiv auf C1-Niveau aus. Zudem verfüge ich über Grundkenntnisse in Französisch. Diese Mehrsprachigkeit ermöglicht mir eine professionelle Betreuung internationaler Gäste – eine Kompetenz, die ich besonders im Hotelumfeld gewinnbringend einsetzen möchte.
 
-Nach meinem Abitur im Jahr 2024 strebe ich nun eine fundierte Ausbildung an und {{availabilityClause}}. Ich bin ein motivierter Teamplayer mit echter Leidenschaft für die Gastronomie und Hotellerie und freue mich darauf, mein Engagement und meine Begeisterung in Ihr Haus einzubringen.
+Nach meinem Abitur im Jahr 2024 strebe ich nun eine fundierte Ausbildung an und stehe Ihnen ab sofort zur Verfügung. Ich bin ein motivierter Teamplayer mit echter Leidenschaft für die Gastronomie und Hotellerie und freue mich darauf, mein Engagement und meine Begeisterung in Ihr Haus einzubringen.
 
 Über eine Einladung zu einem persönlichen Gespräch freue ich mich sehr.
 
@@ -51,20 +51,16 @@ function buildSubject(jobTitle: string, branch: string): string {
   return `Bewerbung um einen Ausbildungsplatz als ${jobTitle}`;
 }
 
-/** Build optional second subject line with start date and city. */
+/** Build optional second subject line with city. */
 function buildSubject2(
-  ausbildungStart: string | undefined,
   companyName: string,
   companyZipCity: string | undefined
 ): string {
   const city = companyZipCity?.trim()
     ? companyZipCity.trim().replace(/^\d{5}\s*/, "") // strip ZIP, keep city
     : "";
-  const parts: string[] = [];
-  if (ausbildungStart?.trim()) parts.push(`Ausbildungsbeginn ${ausbildungStart.trim()}`);
   const location = [companyName, city].filter(Boolean).join(", ");
-  if (location) parts.push(location);
-  return parts.join(" | ");
+  return location;
 }
 
 /** Ensure text ends with sentence punctuation. */
@@ -87,32 +83,33 @@ function buildOpeningParagraph(
 ): string {
   if (branch === "gastronomie") {
     const specialty = companyBesonderheit?.trim() || "";
+    const motivation = personalMotivation?.trim() || "";
     const dept = department?.trim() || "";
 
     // Build a natural description of the establishment
-    let establishmentDesc: string;
-    if (specialty && dept) {
-      // Avoid doubling if specialty already contains dept name
-      establishmentDesc = specialty.toLowerCase().includes(dept.toLowerCase())
-        ? specialty
-        : `${specialty} ${dept}`;
-    } else if (specialty) {
-      establishmentDesc = specialty;
-    } else if (dept) {
-      establishmentDesc = dept;
-    } else {
-      establishmentDesc = "Unternehmen";
+    let establishmentDesc = "Haus";
+    if (dept) {
+      establishmentDesc = dept; // e.g. "Hotel", "Restaurant", "Café"
     }
 
-    const introPart1 = `habe ich mich eingehend über Ihr ${establishmentDesc} informiert`;
+    let intro = "";
 
-    const introPart2 = personalMotivation?.trim()
-      ? `Besonders beeindruckt mich Ihr Fokus auf ${personalMotivation.trim()} – ein Umfeld, in dem ich meine Leidenschaft für erstklassige Gastfreundschaft voll entfalten möchte`
-      : `Besonders Ihr Ruf als erstklassiger Ausbildungsbetrieb und Ihr hoher Anspruch an die Gästebetreuung haben mich sofort angesprochen`;
+    if (!specialty && !motivation) {
+      // Case 4: Neither filled (Fallback)
+      intro = `Die Gastfreundschaft lebt von echten Begegnungen und der Freude daran, Menschen eine gute Zeit zu bereiten. Bei der Suche nach einem Ausbildungsbetrieb, der diese Werte tagtäglich lebt, hat mich Ihr ${establishmentDesc} sofort begeistert.`;
+    } else if (specialty && motivation) {
+      // Case 1: Both filled
+      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Ihre Philosophie, die auf ${specialty} setzt, hat mich sofort angesprochen – dies bietet das ideale Umfeld, um meine Begeisterung für ${motivation} in die Praxis umzusetzen.`;
+    } else if (specialty) {
+      // Case 2: Only specialty filled
+      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Ihre Philosophie, die auf ${specialty} setzt, hat mich dabei sofort angesprochen, da diese Ausrichtung perfekt zu meiner Vorstellung von zeitgemäßer Gastfreundschaft passt.`;
+    } else {
+      // Case 3: Only motivation filled
+      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Besonders Ihre Ausrichtung auf ${motivation} hat mich sofort angesprochen, da mir dieser Aspekt der Gästebetreuung besonders am Herzen liegt.`;
+    }
 
     return (
-      `Mit großem Interesse ${introPart1}. ${ensureSentence(introPart2)}. ` +
-      `Die Aussicht, Teil Ihres professionellen Teams zu werden und gemeinsam unvergessliche Erlebnisse für Ihre Gäste zu schaffen, motiviert mich außerordentlich. ` +
+      `${intro} Die Aussicht, Teil Ihres professionellen Teams zu werden und gemeinsam unvergessliche Erlebnisse für Ihre Gäste zu schaffen, motiviert mich außerordentlich. ` +
       `Daher bewerbe ich mich voller Überzeugung um einen Ausbildungsplatz als ${jobTitle} in Ihrem Haus.`
     );
   }
@@ -180,21 +177,14 @@ export function fillTemplate(data: FormData): FilledTemplate {
       data.department
     );
 
-    // Build natural availability sentence based on whether a start date was provided
-    const availabilityClause = data.ausbildungStart?.trim()
-      ? `stehe Ihnen ab dem ${data.ausbildungStart.trim()} zur Verfügung`
-      : `stehe Ihnen zeitnah zur Verfügung`;
-
     const body = GASTRONOMY_BODY_TEMPLATE
       .replace("{{greeting}}", salutation)
       .replace("{{openingParagraph}}", openingParagraph)
       .replace(/{{companyName}}/g, data.companyName)
-      .replace("{{departmentInfo}}", "")
-      .replace("{{availabilityClause}}", availabilityClause);
+      .replace("{{departmentInfo}}", "");
 
     const subject = buildSubject(data.jobTitle, data.branch);
     const subject2 = buildSubject2(
-      data.ausbildungStart,
       data.companyName,
       data.companyZipCity
     );
@@ -222,7 +212,6 @@ export function fillTemplate(data: FormData): FilledTemplate {
 
   const subject = buildSubject(data.jobTitle, data.branch);
   const subject2 = buildSubject2(
-    data.ausbildungStart,
     data.companyName,
     data.companyZipCity
   );

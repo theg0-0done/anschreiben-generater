@@ -26,9 +26,6 @@ export const FormDataSchema = z.object({
   companyBesonderheit: z.string().optional().default(""),
   personalMotivation: z.string().optional().default(""),
 
-  // Optional job info
-  ausbildungStart: z.string().optional().default(""),
-
   // Optional location
   city: z.string().optional().default(""),
 

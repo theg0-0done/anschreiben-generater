@@ -20,7 +20,6 @@ interface FormFields {
   department: string;
   companyBesonderheit: string;
   personalMotivation: string;
-  ausbildungStart: string;
   mode: "cover-letter" | "full-resume";
 }
 
@@ -47,7 +46,6 @@ const DEFAULT_FIELDS_INFORMATIK: FormFields = {
   department: "",
   companyBesonderheit: "",
   personalMotivation: "",
-  ausbildungStart: "",
   mode: "cover-letter",
 };
 
@@ -64,10 +62,8 @@ const DEFAULT_FIELDS_GASTRONOMIE: FormFields = {
   companyFocus: "",
   companyTech: "",
   department: "Hotel",
-  companyBesonderheit: "modernes Business",
-  personalMotivation:
-    "exzellenten Service und den Umgang mit internationalen Gästen",
-  ausbildungStart: "",
+  companyBesonderheit: "",
+  personalMotivation: "",
   mode: "cover-letter",
 };
 
@@ -367,14 +363,6 @@ export default function BranchPage({
                 </div>
               )}
 
-              <Field
-                label="Ausbildungsbeginn"
-                name="ausbildungStart"
-                value={fields.ausbildungStart}
-                onChange={setField}
-                placeholder="z.B. September 2026 oder ab sofort"
-                disabled={isLoading}
-              />
             </section>
 
             {/* ── Motivation / Tone ── */}
@@ -405,29 +393,22 @@ export default function BranchPage({
               ) : (
                 <div className="space-y-4">
                   <Field
-                    label="Besonderheit des Betriebs"
+                    label="Besonderheit des Betriebs (optional)"
                     name="companyBesonderheit"
                     value={fields.companyBesonderheit}
                     onChange={setField}
-                    placeholder="z.B. exzellenten Service"
+                    placeholder="z.B. renommiertes oder modernes"
                     disabled={isLoading}
                   />
-                  <p className="text-xs text-gray-500 -mt-2">
-                    Eingabe: "über Ihr <strong>[Eingabe]</strong> informiert"
-                  </p>
 
                   <Field
-                    label="Persönlicher Grund / Motivation"
+                    label="Persönlicher Grund / Motivation (optional)"
                     name="personalMotivation"
                     value={fields.personalMotivation}
                     onChange={setField}
-                    placeholder="z.B. Leidenschaft für Kundenkontakt"
+                    placeholder="z.B. den exzellenten Service oder den Umgang mit Gästen"
                     disabled={isLoading}
                   />
-                  <p className="text-xs text-gray-500 -mt-2">
-                    Eingabe: "beeindruckt mich Ihr Fokus auf{" "}
-                    <strong>[Eingabe]</strong>"
-                  </p>
                 </div>
               )}
             </section>
