@@ -13,13 +13,9 @@ interface FormFields {
   contactPerson: string;
   contactSalutation: string;
   jobTitle: string;
-  companyEmail: string;
-  companyPhone: string;
   companyFocus: string;
   companyTech: string;
   department: string;
-  companyBesonderheit: string;
-  personalMotivation: string;
   mode: "cover-letter" | "full-resume";
 }
 
@@ -39,13 +35,9 @@ const DEFAULT_FIELDS_INFORMATIK: FormFields = {
   contactPerson: "",
   contactSalutation: "",
   jobTitle: "Fachinformatiker für Anwendungsentwicklung",
-  companyEmail: "",
-  companyPhone: "",
   companyFocus: "",
   companyTech: "",
   department: "",
-  companyBesonderheit: "",
-  personalMotivation: "",
   mode: "cover-letter",
 };
 
@@ -57,13 +49,9 @@ const DEFAULT_FIELDS_GASTRONOMIE: FormFields = {
   contactPerson: "",
   contactSalutation: "",
   jobTitle: "Hotelfachmann",
-  companyEmail: "",
-  companyPhone: "",
   companyFocus: "",
   companyTech: "",
   department: "Hotel",
-  companyBesonderheit: "",
-  personalMotivation: "",
   mode: "cover-letter",
 };
 
@@ -295,31 +283,6 @@ export default function BranchPage({
               </div>
             </section>
 
-            {/* ── Contact ── */}
-            <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
-                Kontakt (optional)
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field
-                  label="E-Mail"
-                  name="companyEmail"
-                  value={fields.companyEmail}
-                  onChange={setField}
-                  placeholder="jobs@firma.de"
-                  disabled={isLoading}
-                />
-                <Field
-                  label="Telefon"
-                  name="companyPhone"
-                  value={fields.companyPhone}
-                  onChange={setField}
-                  placeholder="+49 30 12345678"
-                  disabled={isLoading}
-                />
-              </div>
-            </section>
-
             {/* ── Job info ── */}
             <section className="space-y-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
@@ -366,52 +329,29 @@ export default function BranchPage({
             </section>
 
             {/* ── Motivation / Tone ── */}
-            <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
-                Motivation & Besonderheiten
-              </h2>
-
-              {branch === "informatik" ? (
-                <>
-                  <Field
-                    label="Fokus des Unternehmens"
-                    name="companyFocus"
-                    value={fields.companyFocus}
-                    onChange={setField}
-                    placeholder="z.B. Cloud-Architekturen"
-                    disabled={isLoading}
-                  />
-                  <Field
-                    label="Technologien & Grund"
-                    name="companyTech"
-                    value={fields.companyTech}
-                    onChange={setField}
-                    placeholder="z.B. Java"
-                    disabled={isLoading}
-                  />
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <Field
-                    label="Besonderheit des Betriebs (optional)"
-                    name="companyBesonderheit"
-                    value={fields.companyBesonderheit}
-                    onChange={setField}
-                    placeholder="z.B. renommiertes oder modernes"
-                    disabled={isLoading}
-                  />
-
-                  <Field
-                    label="Persönlicher Grund / Motivation (optional)"
-                    name="personalMotivation"
-                    value={fields.personalMotivation}
-                    onChange={setField}
-                    placeholder="z.B. den exzellenten Service oder den Umgang mit Gästen"
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
-            </section>
+            {branch === "informatik" && (
+              <section className="space-y-4">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
+                  Motivation & Besonderheiten
+                </h2>
+                <Field
+                  label="Fokus des Unternehmens"
+                  name="companyFocus"
+                  value={fields.companyFocus}
+                  onChange={setField}
+                  placeholder="z.B. Cloud-Architekturen"
+                  disabled={isLoading}
+                />
+                <Field
+                  label="Technologien & Grund"
+                  name="companyTech"
+                  value={fields.companyTech}
+                  onChange={setField}
+                  placeholder="z.B. Java"
+                  disabled={isLoading}
+                />
+              </section>
+            )}
 
             {/* ── Mode + submit ── */}
             <div className="flex flex-col items-end gap-4 pt-4">

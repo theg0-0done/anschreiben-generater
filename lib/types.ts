@@ -14,8 +14,6 @@ export const FormDataSchema = z.object({
   contactPerson: z.string().optional().default(""),
   contactSalutation: z.enum(["", "Herr", "Frau"]).optional().default(""),
   contactDepartmentOrRole: z.string().optional().default(""),
-  companyEmail: z.string().optional().default(""),
-  companyPhone: z.string().optional().default(""),
 
   // Optional motivation fields
   companyFocus: z.string().optional().default(""),
@@ -23,8 +21,6 @@ export const FormDataSchema = z.object({
 
   // Gastronomy specific
   department: z.string().optional().default(""),
-  companyBesonderheit: z.string().optional().default(""),
-  personalMotivation: z.string().optional().default(""),
 
   // Optional location
   city: z.string().optional().default(""),

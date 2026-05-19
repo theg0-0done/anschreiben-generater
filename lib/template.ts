@@ -75,15 +75,11 @@ function buildOpeningParagraph(
   branch: string,
   jobTitle: string,
   companyName?: string,
-  companyBesonderheit?: string,
-  personalMotivation?: string,
   companyFocus?: string,
   companyTech?: string,
   department?: string
 ): string {
   if (branch === "gastronomie") {
-    const specialty = companyBesonderheit?.trim() || "";
-    const motivation = personalMotivation?.trim() || "";
     const dept = department?.trim() || "";
 
     // Build a natural description of the establishment
@@ -92,21 +88,7 @@ function buildOpeningParagraph(
       establishmentDesc = dept; // e.g. "Hotel", "Restaurant", "Café"
     }
 
-    let intro = "";
-
-    if (!specialty && !motivation) {
-      // Case 4: Neither filled (Fallback)
-      intro = `Die Gastfreundschaft lebt von echten Begegnungen und der Freude daran, Menschen eine gute Zeit zu bereiten. Bei der Suche nach einem Ausbildungsbetrieb, der diese Werte tagtäglich lebt, hat mich Ihr ${establishmentDesc} sofort begeistert.`;
-    } else if (specialty && motivation) {
-      // Case 1: Both filled
-      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Ihre Philosophie, die auf ${specialty} setzt, hat mich sofort angesprochen – dies bietet das ideale Umfeld, um meine Begeisterung für ${motivation} in die Praxis umzusetzen.`;
-    } else if (specialty) {
-      // Case 2: Only specialty filled
-      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Ihre Philosophie, die auf ${specialty} setzt, hat mich dabei sofort angesprochen, da diese Ausrichtung perfekt zu meiner Vorstellung von zeitgemäßer Gastfreundschaft passt.`;
-    } else {
-      // Case 3: Only motivation filled
-      intro = `Mit großem Interesse habe ich mich über Ihr ${establishmentDesc} informiert. Besonders Ihre Ausrichtung auf ${motivation} hat mich sofort angesprochen, da mir dieser Aspekt der Gästebetreuung besonders am Herzen liegt.`;
-    }
+    const intro = `Die Gastfreundschaft lebt von echten Begegnungen und der Freude daran, Menschen eine gute Zeit zu bereiten. Bei der Suche nach einem Ausbildungsbetrieb, der diese Werte tagtäglich lebt, hat mich Ihr ${establishmentDesc} sofort begeistert.`;
 
     return (
       `${intro} Die Aussicht, Teil Ihres professionellen Teams zu werden und gemeinsam unvergessliche Erlebnisse für Ihre Gäste zu schaffen, motiviert mich außerordentlich. ` +
@@ -170,8 +152,6 @@ export function fillTemplate(data: FormData): FilledTemplate {
       data.branch,
       data.jobTitle,
       data.companyName,
-      data.companyBesonderheit,
-      data.personalMotivation,
       undefined,
       undefined,
       data.department
@@ -197,8 +177,6 @@ export function fillTemplate(data: FormData): FilledTemplate {
     data.branch,
     data.jobTitle,
     data.companyName,
-    undefined,
-    undefined,
     data.companyFocus,
     data.companyTech
   );
