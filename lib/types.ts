@@ -30,6 +30,11 @@ export const FormDataSchema = z.object({
   coverLetterTemplate: z.string().optional(),
   resumeBase64: z.string().optional(),
 
+  // Inline hook generation fields (sent by dashboard for merged request)
+  companyInfo: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+
   // Output mode and placement
   mode: z.enum(["cover-letter", "full-resume"]),
   coverLetterPageNumber: z.number().int().min(1).optional().default(1),

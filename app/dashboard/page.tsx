@@ -132,26 +132,49 @@ export default function DashboardPage() {
     
     setIsGenerating(true);
     try {
-      const res = await fetch("/api/generate-hook", {
+      // Single merged request: hook generation + PDF in one round-trip
+      let resumeBase64 = undefined;
+      if (mode === "full-resume" && context.resumeId) {
+        resumeBase64 = await getPDFAsBase64(context.resumeId);
+      }
+
+      const branchStr = (context.jobTitle.toLowerCase().includes("hotel") || context.jobTitle.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
+      const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          branch: branchStr,
           companyName,
+          jobTitle: context.jobTitle,
+          companyStreet: street,
+          companyZipCity: postalCity,
+          contactPerson,
+          contactSalutation,
+          mode,
+          coverLetterPageNumber: context.coverLetterPageNumber || 1,
+          coverLetterTemplate: context.coverLetterTemplate,
+          resumeBase64,
+          // Pass companyInfo + names so the server generates the hook inline
           companyInfo,
           firstName: context.firstName,
           lastName: context.lastName,
-          targetJob: context.jobTitle,
         }),
       });
 
       if (!res.ok) throw new Error("Fehler bei der Generierung");
 
-      const data = await res.json();
-      const newHook = data.hook;
+      // Extract the generated hook from the response header
+      const hookHeader = res.headers.get("X-Generated-Hook");
+      const newHook = hookHeader ? decodeURIComponent(hookHeader) : hook;
       setHook(newHook);
       setLastCompanyKey(currentKey);
-      
-      await generatePdf(newHook, mode);
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      setPdfUrl(prev => {
+        if (prev) window.URL.revokeObjectURL(prev);
+        return url;
+      });
       setShowPreview(true);
     } catch (error) {
       console.error(error);

@@ -23,6 +23,7 @@ function truncateWords(text: string, maxWords: number): string {
 }
 
 export async function POST(req: NextRequest) {
+  const t0 = performance.now();
   try {
     if (!process.env.CLAUD_API_KEY) {
       return NextResponse.json(
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
     const key = cacheKey(companyName, trimmedInfo, firstName ?? "", lastName ?? "", targetJob ?? "");
     const cached = hookCache.get(key);
     if (cached) {
+      console.log(`[generate-hook] ✅ Cache HIT — ${(performance.now() - t0).toFixed(0)}ms total`);
       return NextResponse.json({ hook: cached, cached: true });
     }
 
@@ -70,11 +72,14 @@ Your task is to write the FIRST paragraph (The Hook) of a formal German cover le
 GENDER RULE — Job title consistency:
 ${(firstName && lastName && targetJob) ? `Infer the applicant's gender from their name ("${firstName} ${lastName}"). Use the correct gendered form of any job title mentioned (e.g. "Hotelfachmann" vs "Hotelfachfrau", "Fachinformatiker" vs "Fachinformatikerin"). If the job posting uses a neutral form such as "Fachinformatiker/in", you may mirror that neutral form, but you must NEVER default to the gender opposite to the applicant's. The gender must remain consistent throughout this paragraph.` : "Use gender-appropriate language based on the applicant's name if available."}`;
 
+    const tAI = performance.now();
+    console.log(`[generate-hook] 🤖 AI call START (model: claude-haiku-4-5, prompt ~${prompt.length} chars)`);
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 400,
       messages: [{ role: "user", content: prompt }]
     });
+    console.log(`[generate-hook] 🤖 AI call END — ${(performance.now() - tAI).toFixed(0)}ms`);
 
     let hook = (response.content[0] as any).text.trim();
     if (hook) {
@@ -88,6 +93,7 @@ ${(firstName && lastName && targetJob) ? `Infer the applicant's gender from thei
     }
     hookCache.set(key, hook);
 
+    console.log(`[generate-hook] ✅ Done — ${(performance.now() - t0).toFixed(0)}ms total`);
     return NextResponse.json({ hook });
 
   } catch (error: any) {

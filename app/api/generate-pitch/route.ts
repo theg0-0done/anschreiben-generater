@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createHash } from "crypto";
 // @ts-ignore
 import pdf from "pdf-parse";
 
 const anthropic = new Anthropic({ apiKey: process.env.CLAUD_API_KEY || "" });
 
+// ─── In-process pitch cache ──────────────────────────────────────────────────
+// Same pattern as generate-hook: avoids re-calling AI for identical inputs.
+const PITCH_CACHE_MAX = 20;
+const pitchCache = new Map<string, string>();
+
+function cacheKey(targetJob: string, cvText: string, firstName: string, lastName: string): string {
+  return createHash("sha1")
+    .update(`${targetJob}|${cvText}|${firstName}|${lastName}`)
+    .digest("hex");
+}
+
+function truncateWords(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ") + " …";
+}
+
 export async function POST(req: NextRequest) {
+  const t0 = performance.now();
   try {
     if (!process.env.CLAUD_API_KEY) {
       return NextResponse.json(
@@ -25,9 +44,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse PDF to text
+    const tParse = performance.now();
     const buffer = Buffer.from(resumeBase64, "base64");
     const pdfData = await pdf(buffer);
-    const cvText = pdfData.text;
+    const rawCvText: string = pdfData.text;
+    console.log(`[generate-pitch] 📄 PDF parse — ${(performance.now() - tParse).toFixed(0)}ms (${rawCvText.split(/\s+/).length} words extracted)`);
+
+    // Truncate CV text to reduce input tokens — most meaningful content is
+    // in the first 600 words; the tail is usually formatting artifacts.
+    const cvText = truncateWords(rawCvText, 600);
+
+    // Check cache before calling the AI
+    const key = cacheKey(targetJob, cvText, firstName, lastName);
+    const cached = pitchCache.get(key);
+    if (cached) {
+      console.log(`[generate-pitch] ✅ Cache HIT — ${(performance.now() - t0).toFixed(0)}ms total`);
+      return NextResponse.json({ template: cached, cached: true });
+    }
 
     const currentDate = new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -110,15 +143,19 @@ RULE 8 — Tone & length:
 
 Output ONLY the final cover letter template text. Do not use JSON. Do not wrap in code blocks. Use formal "Sie". Use perfect, professional German.`;
 
+    const tAI = performance.now();
+    console.log(`[generate-pitch] 🤖 AI call START (model: claude-haiku-4-5, prompt ~${prompt.length} chars, cv ~${cvText.split(/\s+/).length} words)`);
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 1200,
       messages: [{ role: "user", content: prompt }]
     });
+    console.log(`[generate-pitch] 🤖 AI call END — ${(performance.now() - tAI).toFixed(0)}ms`);
 
     let template = (response.content[0] as any).text.trim();
 
     // Post-process to force-capitalize the first letter of each AI-generated paragraph
+    const tPost = performance.now();
     template = template.split('\n').map((line: string) => {
       const trimmed = line.trim();
       if (!trimmed) return line;
@@ -136,11 +173,19 @@ Output ONLY the final cover letter template text. Do not use JSON. Do not wrap i
       // Capitalize first letter of the paragraph
       return line.charAt(0).toUpperCase() + line.slice(1);
     }).join('\n');
+    console.log(`[generate-pitch] 📝 Post-process — ${(performance.now() - tPost).toFixed(0)}ms`);
 
+    // Store in cache (evict oldest entry if at capacity)
+    if (pitchCache.size >= PITCH_CACHE_MAX) {
+      pitchCache.delete(pitchCache.keys().next().value!);
+    }
+    pitchCache.set(key, template);
+
+    console.log(`[generate-pitch] ✅ Done — ${(performance.now() - t0).toFixed(0)}ms total`);
     return NextResponse.json({ template });
 
   } catch (error: any) {
-    console.error("Generate Pitch API Error:", error);
+    console.error(`[generate-pitch] ❌ Error after ${(performance.now() - (0)).toFixed(0)}ms:`, error);
     return NextResponse.json(
       { error: error.message || "An error occurred during generation" },
       { status: 500 }
