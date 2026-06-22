@@ -13,33 +13,40 @@ import path from "path";
  * For Informatik: assets/Bewerbungsunterlagen.pdf
  * For Gastronomie: Prepends cover letter to assets/Gastronomie Lebenslauf.pdf
  */
-export async function replacePageTwo(coverLetterBytes: Uint8Array, branch: "informatik" | "gastronomie" = "informatik"): Promise<Uint8Array> {
-  const baseFile = branch === "gastronomie" 
-    ? "Bewerbungsunterlagen_Hotelfachmann_Said_Fateh.pdf" 
-    : "Bewerbungsunterlagen.pdf";
-    
-  const basePdfPath = path.join(process.cwd(), "assets", baseFile);
+export async function insertCoverLetterPage(
+  coverLetterBytes: Uint8Array, 
+  basePdfBytes?: Uint8Array,
+  branch: "informatik" | "gastronomie" = "informatik",
+  insertIndex: number = 1
+): Promise<Uint8Array> {
+  let baseBytes = basePdfBytes;
+  
+  if (!baseBytes) {
+    const baseFile = branch === "gastronomie" 
+      ? "Bewerbungsunterlagen_Hotelfachmann_Said_Fateh.pdf" 
+      : "Bewerbungsunterlagen.pdf";
+      
+    const basePdfPath = path.join(process.cwd(), "assets", baseFile);
 
-  if (!fs.existsSync(basePdfPath)) {
-    throw new Error(
-      `assets/${baseFile} not found. Please ensure it exists in the assets folder.`
-    );
+    if (!fs.existsSync(basePdfPath)) {
+      throw new Error(
+        `assets/${baseFile} not found. Please ensure it exists in the assets folder.`
+      );
+    }
+    baseBytes = fs.readFileSync(basePdfPath);
   }
-
-  const baseBytes = fs.readFileSync(basePdfPath);
   const basePdf = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
   const coverPdf = await PDFDocument.load(coverLetterBytes);
 
   const totalPages = basePdf.getPageCount();
-  if (totalPages < 2) {
+  if (insertIndex < 0 || insertIndex > totalPages) {
     throw new Error(
-      `Base PDF has only ${totalPages} page(s) — page 2 cannot be replaced.`
+      `Base PDF has ${totalPages} page(s) — cannot insert at index ${insertIndex}.`
     );
   }
 
   const [newPage] = await basePdf.copyPages(coverPdf, [0]);
-  basePdf.removePage(1);
-  basePdf.insertPage(1, newPage);
+  basePdf.insertPage(insertIndex, newPage);
 
   return basePdf.save({ useObjectStreams: false });
 }

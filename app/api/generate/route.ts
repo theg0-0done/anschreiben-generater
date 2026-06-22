@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FormDataSchema } from "@/lib/types";
 import { generateCoverLetterPdf } from "@/lib/pdf-generator";
-import { replacePageTwo } from "@/lib/pdf-merger";
+import { insertCoverLetterPage } from "@/lib/pdf-merger";
 
 /** Safe filename: letters, digits, hyphens, underscores only. */
 function sanitizeFilename(str: string): string {
@@ -33,7 +33,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     let fileName: string;
 
     if (formData.mode === "full-resume") {
-      finalPdfBytes = await replacePageTwo(coverLetterBytes, formData.branch);
+      const insertIndex = Math.max(0, (formData.coverLetterPageNumber || 1) - 1);
+      let basePdfBytes: Uint8Array | undefined;
+      
+      if (formData.resumeBase64) {
+        const base64Data = formData.resumeBase64.split(",")[1] || formData.resumeBase64;
+        basePdfBytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
+      }
+
+      finalPdfBytes = await insertCoverLetterPage(coverLetterBytes, basePdfBytes, formData.branch, insertIndex);
       fileName = `Bewerbungsunterlagen_${companySlug}_Said_Fateh.pdf`;
     } else {
       finalPdfBytes = coverLetterBytes;

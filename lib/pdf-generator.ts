@@ -124,7 +124,47 @@ export async function generateCoverLetterPdf(formData: FormData): Promise<Uint8A
   y -= lh(BODY) * 2;
 
   // ── Subject line (bold) ───────────────────────────────────────────────────
-  const { body, subject } = fillTemplate(formData);
+  let { body, subject } = fillTemplate(formData);
+
+  if (formData.coverLetterTemplate) {
+    const hook = formData.customHook || "";
+    const salutationLine = (formData.contactSalutation === "Herr" && formData.contactPerson)
+      ? `Sehr geehrter Herr ${formData.contactPerson},`
+      : (formData.contactSalutation === "Frau" && formData.contactPerson)
+        ? `Sehr geehrte Frau ${formData.contactPerson},`
+        : "Sehr geehrte Damen und Herren,";
+
+    let finalTemplate = formData.coverLetterTemplate;
+
+    // Replace generic salutation with specific one if found
+    if (finalTemplate.startsWith("Sehr geehrte Damen und Herren,")) {
+      finalTemplate = finalTemplate.replace("Sehr geehrte Damen und Herren,", salutationLine);
+    } else {
+      const lines = finalTemplate.split("\n");
+      if (lines.length > 0 && lines[0].startsWith("Sehr geehrte")) {
+        lines[0] = salutationLine;
+        finalTemplate = lines.join("\n");
+      }
+    }
+
+    // Insert the hook
+    if (finalTemplate.includes("[COMPANY_HOOK]")) {
+      body = finalTemplate.replace("[COMPANY_HOOK]", hook);
+    } else {
+      const lines = finalTemplate.split("\n");
+      let insertIdx = 1;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === "") {
+          insertIdx = i + 1;
+          break;
+        }
+      }
+      if (hook) {
+        lines.splice(insertIdx, 0, hook, "");
+      }
+      body = lines.join("\n");
+    }
+  }
 
   for (const line of wrapText(subject, bold, BODY, TEXT_WIDTH)) {
     drawLeft(ctx, line, MARGIN_LEFT, y, BODY, true);

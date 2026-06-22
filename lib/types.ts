@@ -25,9 +25,14 @@ export const FormDataSchema = z.object({
   // Optional location
   city: z.string().optional().default(""),
 
+  // Custom AI text fields
+  customHook: z.string().optional(),
+  coverLetterTemplate: z.string().optional(),
+  resumeBase64: z.string().optional(),
 
-  // Output mode
+  // Output mode and placement
   mode: z.enum(["cover-letter", "full-resume"]),
+  coverLetterPageNumber: z.number().int().min(1).optional().default(1),
 });
 
 export type FormData = z.infer<typeof FormDataSchema>;
