@@ -116,6 +116,7 @@ export default function DashboardPage() {
   };
 
   const handleGenerate = async () => {
+    if (!context) return;
     if (!companyName || !companyInfo) {
       alert("Bitte füllen Sie den Firmennamen und die Firmeninfos aus.");
       return;
