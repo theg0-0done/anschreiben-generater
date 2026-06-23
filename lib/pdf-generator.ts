@@ -173,12 +173,19 @@ export async function generateCoverLetterPdf(formData: FormData): Promise<Uint8A
   y -= lh(BODY) * 0.5;
 
   // ── Body paragraphs ───────────────────────────────────────────────────────
+  let hasWarnedOverflow = false;
   for (const para of body.split(/\n\n+/)) {
     const trimmed = para.trim();
     if (!trimmed) continue;
 
     for (const line of wrapText(trimmed, normal, BODY, TEXT_WIDTH)) {
-      if (y < 55) break; // never overflow the page
+      if (y < 55) {
+        if (!hasWarnedOverflow) {
+          console.warn("[PDF Generator] WARNING: Cover letter content exceeds one page and will be truncated!");
+          hasWarnedOverflow = true;
+        }
+        break; // never overflow the page
+      }
       drawLeft(ctx, line, MARGIN_LEFT, y, BODY);
       y -= lh(BODY);
     }
