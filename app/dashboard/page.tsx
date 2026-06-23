@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getActiveContext, AusbildungContext } from "../../lib/storage";
 import { PDFViewer } from "@react-pdf/renderer";
+import { insertCoverLetterPage } from "../../lib/pdf-merger";
 import { CoverLetterPDF } from "../../components/CoverLetterPDF";
 import { Loader2, Zap, ChevronDown } from "lucide-react";
 
@@ -94,17 +95,29 @@ export default function DashboardPage() {
           companyZipCity: postalCity,
           contactPerson,
           contactSalutation,
-          mode: currentMode,
+          mode: "cover-letter", // Server only generates the cover letter now
           coverLetterPageNumber: context.coverLetterPageNumber || 1,
           customHook: currentHook,
           coverLetterTemplate: context.coverLetterTemplate,
-          resumeBlobUrl: currentMode === "full-resume" ? context.resumeBlobUrl : undefined,
         }),
       });
       if (!res.ok) throw new Error("Fehler bei der PDF-Generierung");
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      let finalBlob = await res.blob();
+
+      // Client-side merging for Vercel speed
+      if (currentMode === "full-resume" && context.resumeBlobUrl) {
+        const coverBuffer = new Uint8Array(await finalBlob.arrayBuffer());
+        const resumeRes = await fetch(context.resumeBlobUrl);
+        if (!resumeRes.ok) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
+        const resumeBuffer = new Uint8Array(await resumeRes.arrayBuffer());
+        
+        const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
+        const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
+        finalBlob = new Blob([mergedBytes], { type: "application/pdf" });
+      }
+
+      const url = window.URL.createObjectURL(finalBlob);
       setPdfUrl(prev => {
         if (prev) window.URL.revokeObjectURL(prev);
         return url;
@@ -153,10 +166,9 @@ export default function DashboardPage() {
           companyZipCity: postalCity,
           contactPerson,
           contactSalutation,
-          mode,
+          mode: "cover-letter", // Server only generates the cover letter
           coverLetterPageNumber: context.coverLetterPageNumber || 1,
           coverLetterTemplate: context.coverLetterTemplate,
-          resumeBlobUrl: mode === "full-resume" ? context.resumeBlobUrl : undefined,
           // Pass companyInfo + names so the server generates the hook inline
           companyInfo,
           firstName: context.firstName,
@@ -172,8 +184,21 @@ export default function DashboardPage() {
       setHook(newHook);
       setLastCompanyKey(currentKey);
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      let finalBlob = await res.blob();
+
+      // Client-side merging for Vercel speed
+      if (mode === "full-resume" && context.resumeBlobUrl) {
+        const coverBuffer = new Uint8Array(await finalBlob.arrayBuffer());
+        const resumeRes = await fetch(context.resumeBlobUrl);
+        if (!resumeRes.ok) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
+        const resumeBuffer = new Uint8Array(await resumeRes.arrayBuffer());
+        
+        const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
+        const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
+        finalBlob = new Blob([mergedBytes], { type: "application/pdf" });
+      }
+
+      const url = window.URL.createObjectURL(finalBlob);
       setPdfUrl(prev => {
         if (prev) window.URL.revokeObjectURL(prev);
         return url;
