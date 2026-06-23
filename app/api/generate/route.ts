@@ -156,12 +156,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const tMerge = performance.now();
       console.log(`[generate] 📎 PDF merge START`);
       const insertIndex = Math.max(0, (formData.coverLetterPageNumber || 1) - 1);
-      let basePdfBytes: Uint8Array | undefined;
-      
-      if (formData.resumeBase64) {
-        const base64Data = formData.resumeBase64.split(",")[1] || formData.resumeBase64;
-        basePdfBytes = Uint8Array.from(Buffer.from(base64Data, "base64"));
+
+      if (!formData.resumeBlobUrl) {
+        return NextResponse.json(
+          { success: false, error: "resumeBlobUrl is required for full-resume mode. Please re-upload your resume on the Uploads page." },
+          { status: 400 }
+        );
       }
+
+      // Fetch the user's resume from Vercel Blob — same-network fetch, ~10-50ms
+      const tFetch = performance.now();
+      const blobRes = await fetch(formData.resumeBlobUrl);
+      if (!blobRes.ok) {
+        return NextResponse.json(
+          { success: false, error: "Failed to fetch resume from storage. Please re-upload your resume." },
+          { status: 502 }
+        );
+      }
+      const basePdfBytes = new Uint8Array(await blobRes.arrayBuffer());
+      console.log(`[generate] 📥 Blob fetch END — ${(performance.now() - tFetch).toFixed(0)}ms (${basePdfBytes.length} bytes)`);
 
       finalPdfBytes = await insertCoverLetterPage(coverLetterBytes, basePdfBytes, formData.branch, insertIndex);
       console.log(`[generate] 📎 PDF merge END — ${(performance.now() - tMerge).toFixed(0)}ms`);

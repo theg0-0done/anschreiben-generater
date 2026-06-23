@@ -20,7 +20,8 @@ export interface AusbildungContext {
   aiClosing?: string;
   cvFileName?: string;
   resumeFileName?: string;
-  hasCustomResume?: boolean; // true when user has uploaded a custom full resume (not the built-in assets/ file)
+  resumeBlobUrl?: string;  // Vercel Blob URL for the user's full resume (set after onboarding/re-upload)
+  hasCustomResume?: boolean; // kept for legacy compat
 }
 
 // ─── localforage Setup (IndexedDB for heavy files) ──────────────────────────

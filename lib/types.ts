@@ -28,7 +28,7 @@ export const FormDataSchema = z.object({
   // Custom AI text fields
   customHook: z.string().optional(),
   coverLetterTemplate: z.string().optional(),
-  resumeBase64: z.string().optional(),
+  resumeBlobUrl: z.string().url().optional(), // Vercel Blob URL — server fetches the PDF from here
 
   // Inline hook generation fields (sent by dashboard for merged request)
   companyInfo: z.string().optional(),

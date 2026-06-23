@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.40.0",
     "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^4.5.1",
+    "@vercel/blob": "^2.4.1",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",

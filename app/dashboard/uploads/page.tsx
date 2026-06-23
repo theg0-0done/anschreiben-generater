@@ -16,6 +16,9 @@ export default function UploadsPage() {
   // Drag states
   const [isCvDragging, setIsCvDragging] = useState(false);
   const [isResumeDragging, setIsResumeDragging] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
+
 
   useEffect(() => {
     const active = getActiveContext();
@@ -48,25 +51,55 @@ export default function UploadsPage() {
     if (file.type !== "application/pdf" || !context) return;
 
     if (type === "resume" && context.resumeId) {
-      await savePDF(context.resumeId, file);
-      const rBuffer = await getPDF(context.resumeId);
-      if (rBuffer) setResumeUrl(URL.createObjectURL(new Blob([rBuffer], { type: "application/pdf" })));
-      
-      const updatedContext = { ...context, resumeFileName: file.name, hasCustomResume: true };
-      saveActiveContext(updatedContext);
-      setContext(updatedContext);
-    } else if (type === "cv" && context.cvId) {
-      await savePDF(context.cvId, file);
-      const cvBuffer = await getPDF(context.cvId);
-      if (cvBuffer) setCvUrl(URL.createObjectURL(new Blob([cvBuffer], { type: "application/pdf" })));
-
-      let updatedContext = { ...context, cvFileName: file.name };
-      saveActiveContext(updatedContext);
-      setContext(updatedContext);
-
-      // Generate new template based on the new CV
-      setIsGenerating(true);
+      setIsUploadingResume(true);
       try {
+        // Upload new resume to our server route, which forwards to Vercel Blob
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("contextId", context.id);
+
+        const uploadRes = await fetch("/api/upload-resume", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json();
+          throw new Error(errorData.error || "Failed to upload resume");
+        }
+
+        const data = await uploadRes.json();
+        
+        const resumeUrl = URL.createObjectURL(file);
+        setResumeUrl(resumeUrl);
+
+        const updatedContext = { 
+          ...context, 
+          resumeFileName: file.name, 
+          resumeBlobUrl: data.url,
+          hasCustomResume: true 
+        };
+        saveActiveContext(updatedContext);
+        setContext(updatedContext);
+      } catch (err) {
+        console.error(err);
+        alert("Upload fehlgeschlagen. Bitte versuchen Sie es erneut.");
+      } finally {
+        setIsUploadingResume(false);
+      }
+    } else if (type === "cv" && context.cvId) {
+      setIsUploadingCv(true);
+      try {
+        await savePDF(context.cvId, file);
+        const cvBuffer = await getPDF(context.cvId);
+        if (cvBuffer) setCvUrl(URL.createObjectURL(new Blob([cvBuffer], { type: "application/pdf" })));
+
+        let updatedContext = { ...context, cvFileName: file.name };
+        saveActiveContext(updatedContext);
+        setContext(updatedContext);
+
+        // Generate new template based on the new CV
+        setIsGenerating(true);
         const cvBase64 = await getPDFAsBase64(context.cvId);
         const res = await fetch("/api/generate-pitch", {
           method: "POST",
@@ -180,8 +213,16 @@ export default function UploadsPage() {
                   : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300"
               }`}
             >
-               {cvUrl ? (
-                 <span className="font-bold text-slate-600 text-sm">{context.cvFileName || "Lebenslauf.pdf"}</span>
+               {isUploadingCv ? (
+                 <div className="flex flex-col items-center gap-2 text-purple-600">
+                   <Loader2 className="w-8 h-8 animate-spin" />
+                   <span className="text-sm font-medium">Lädt hoch...</span>
+                 </div>
+               ) : cvUrl ? (
+                 <div className="flex flex-col items-center gap-2 text-slate-600">
+                   <Check className="w-8 h-8 text-purple-500" />
+                   <span className="font-bold text-sm text-center px-4">{context.cvFileName || "Lebenslauf.pdf"}</span>
+                 </div>
                ) : (
                  <div className="flex flex-col items-center gap-2 text-slate-400">
                    <FileText className="w-8 h-8 opacity-50" />
@@ -213,8 +254,16 @@ export default function UploadsPage() {
                   : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300"
               }`}
             >
-               {resumeUrl ? (
-                 <span className="font-bold text-slate-600 text-sm">{context.resumeFileName || "bewerbungsunterlagen.pdf"}</span>
+               {isUploadingResume ? (
+                 <div className="flex flex-col items-center gap-2 text-emerald-600">
+                   <Loader2 className="w-8 h-8 animate-spin" />
+                   <span className="text-sm font-medium">Lädt hoch...</span>
+                 </div>
+               ) : resumeUrl ? (
+                 <div className="flex flex-col items-center gap-2 text-slate-600">
+                   <Check className="w-8 h-8 text-emerald-500" />
+                   <span className="font-bold text-sm text-center px-4">{context.resumeFileName}</span>
+                 </div>
                ) : (
                  <div className="flex flex-col items-center gap-2 text-slate-400">
                    <FileText className="w-8 h-8 opacity-50" />

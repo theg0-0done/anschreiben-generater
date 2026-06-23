@@ -96,14 +96,34 @@ export default function OnboardingPage() {
       const resumeId = `resume_${contextId}`;
       const cvId = `cv_${contextId}`;
 
-      // 1. Save PDFs to IndexedDB
-      if (resume) await savePDF(resumeId, resume);
+      // 1. Upload full resume to our server route, which forwards to Vercel Blob
+      let resumeBlobUrl: string | undefined;
+      if (resume) {
+        const formData = new FormData();
+        formData.append("file", resume);
+        formData.append("contextId", contextId);
+
+        const uploadRes = await fetch("/api/upload-resume", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json();
+          throw new Error(errorData.error || "Failed to upload resume");
+        }
+
+        const data = await uploadRes.json();
+        resumeBlobUrl = data.url;
+      }
+
+      // 2. Save CV to IndexedDB (used locally for AI pitch generation)
       if (cv) await savePDF(cvId, cv);
 
-      // 2. Get Base64 of CV for AI
+      // 3. Get Base64 of CV for AI
       const cvBase64 = await getPDFAsBase64(cvId);
 
-      // 3. Generate AI Template from CV
+      // 4. Generate AI Template from CV
       const res = await fetch("/api/generate-pitch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,7 +144,7 @@ export default function OnboardingPage() {
 
       const { template } = await res.json();
       
-      // 4. Create and save new Ausbildung Context
+      // 5. Create and save new Ausbildung Context
       const newContext: AusbildungContext = {
         id: contextId,
         jobTitle,
@@ -140,7 +160,9 @@ export default function OnboardingPage() {
         coverLetterTemplate: template,
         coverLetterPageNumber,
         cvFileName: cv?.name,
-        resumeFileName: resume?.name
+        resumeFileName: resume?.name,
+        hasCustomResume: !!resume,
+        resumeBlobUrl,
       };
 
       const existingContexts = getContexts();
