@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getActiveContext, AusbildungContext, getPDFAsBase64 } from "../../lib/storage";
+import { getActiveContext, AusbildungContext, getPDFAsBase64, saveActiveContext } from "../../lib/storage";
 import { PDFViewer } from "@react-pdf/renderer";
 import { CoverLetterPDF } from "../../components/CoverLetterPDF";
 import { Loader2, Zap, ChevronDown } from "lucide-react";
@@ -75,9 +75,21 @@ export default function DashboardPage() {
     if (!context) return;
     setIsUpdatingPdf(true);
     try {
+      // Only send resumeBase64 if the user uploaded a custom file.
+      // Otherwise the server reads from assets/ by branch (fast — no upload cost).
       let resumeBase64 = undefined;
-      if (currentMode === "full-resume" && context.resumeId) {
-        resumeBase64 = await getPDFAsBase64(context.resumeId);
+      if (currentMode === "full-resume" && context.resumeId && context.hasCustomResume) {
+        const base64 = await getPDFAsBase64(context.resumeId);
+        if (base64) {
+          resumeBase64 = base64;
+        } else {
+          // IndexedDB lost the file (e.g. cleared storage, different browser).
+          // Reset the flag so future requests don't try again, and fall back to assets/.
+          console.warn("[dashboard] Custom resume missing from IndexedDB — resetting flag, falling back to assets/");
+          const fixed = { ...context, hasCustomResume: false };
+          saveActiveContext(fixed);
+          setContext(fixed);
+        }
       }
 
       const branchStr = (context.jobTitle.toLowerCase().includes("hotel") || context.jobTitle.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
@@ -96,7 +108,7 @@ export default function DashboardPage() {
           coverLetterPageNumber: context.coverLetterPageNumber || 1,
           customHook: currentHook,
           coverLetterTemplate: context.coverLetterTemplate,
-          resumeBase64
+          resumeBase64, // undefined when using built-in assets/ file
         }),
       });
       if (!res.ok) throw new Error("Fehler bei der PDF-Generierung");
@@ -132,10 +144,21 @@ export default function DashboardPage() {
     
     setIsGenerating(true);
     try {
-      // Single merged request: hook generation + PDF in one round-trip
+      // Only send resumeBase64 if the user uploaded a custom file.
+      // Otherwise the server reads from assets/ by branch (fast — no upload cost).
       let resumeBase64 = undefined;
-      if (mode === "full-resume" && context.resumeId) {
-        resumeBase64 = await getPDFAsBase64(context.resumeId);
+      if (mode === "full-resume" && context.resumeId && context.hasCustomResume) {
+        const base64 = await getPDFAsBase64(context.resumeId);
+        if (base64) {
+          resumeBase64 = base64;
+        } else {
+          // IndexedDB lost the file (e.g. cleared storage, different browser).
+          // Reset the flag so future requests don't try again, and fall back to assets/.
+          console.warn("[dashboard] Custom resume missing from IndexedDB — resetting flag, falling back to assets/");
+          const fixed = { ...context, hasCustomResume: false };
+          saveActiveContext(fixed);
+          setContext(fixed);
+        }
       }
 
       const branchStr = (context.jobTitle.toLowerCase().includes("hotel") || context.jobTitle.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
@@ -153,7 +176,7 @@ export default function DashboardPage() {
           mode,
           coverLetterPageNumber: context.coverLetterPageNumber || 1,
           coverLetterTemplate: context.coverLetterTemplate,
-          resumeBase64,
+          resumeBase64, // undefined when using built-in assets/ file
           // Pass companyInfo + names so the server generates the hook inline
           companyInfo,
           firstName: context.firstName,

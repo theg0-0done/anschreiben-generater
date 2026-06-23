@@ -52,7 +52,7 @@ export default function UploadsPage() {
       const rBuffer = await getPDF(context.resumeId);
       if (rBuffer) setResumeUrl(URL.createObjectURL(new Blob([rBuffer], { type: "application/pdf" })));
       
-      const updatedContext = { ...context, resumeFileName: file.name };
+      const updatedContext = { ...context, resumeFileName: file.name, hasCustomResume: true };
       saveActiveContext(updatedContext);
       setContext(updatedContext);
     } else if (type === "cv" && context.cvId) {
