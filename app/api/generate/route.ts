@@ -50,6 +50,7 @@ Here is information about the company and the job posting:
 "${trimmedInfo}"
 
 Your task is to write the FIRST paragraph (The Hook) of a formal German cover letter.
+- The hook must be no more than 3 sentences and 80 words total. Prioritize the 1-2 most specific and compelling details from the company description rather than trying to include everything.
 - It MUST reference specific, compelling details from the company info above.
 - It MUST NOT include "Sehr geehrte Damen und Herren" or any salutation. Start directly with the text.
 - Use formal "Sie". Use perfect, professional German.
@@ -70,6 +71,23 @@ ${(firstName && lastName && targetJob) ? `Infer the applicant's gender from thei
   let hook = (response.content[0] as any).text.trim();
   if (hook) {
     hook = hook.charAt(0).toUpperCase() + hook.slice(1);
+
+    // Hard safeguard: enforce word limit (80 words)
+    const words = hook.split(/\s+/);
+    if (words.length > 80) {
+      console.warn(`[generate/hook-inline] WARNING: AI generated hook exceeds 80 words (${words.length} words). Truncating at last complete sentence.`);
+      const truncated = words.slice(0, 80).join(" ");
+      const lastSentenceEnd = Math.max(
+        truncated.lastIndexOf("."),
+        truncated.lastIndexOf("!"),
+        truncated.lastIndexOf("?")
+      );
+      if (lastSentenceEnd > 0) {
+        hook = truncated.substring(0, lastSentenceEnd + 1);
+      } else {
+        hook = truncated + " ...";
+      }
+    }
   }
 
   // Store in cache
