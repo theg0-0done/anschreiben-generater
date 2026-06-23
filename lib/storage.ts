@@ -44,12 +44,13 @@ export async function deletePDF(key: string): Promise<void> {
 export async function getPDFAsBase64(key: string): Promise<string | null> {
   const buffer = await getPDF(key);
   if (!buffer) return null;
-  // Convert ArrayBuffer to Base64
-  let binary = "";
+  // Fast Base64 encoding using chunked processing (avoids main-thread freeze
+  // that occurs when building a giant string character-by-character in a loop).
   const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const CHUNK = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   return window.btoa(binary);
 }
