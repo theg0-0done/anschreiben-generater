@@ -114,7 +114,7 @@ export default function DashboardPage() {
         
         const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
         const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
-        finalBlob = new Blob([mergedBytes], { type: "application/pdf" });
+        finalBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
       }
 
       const url = window.URL.createObjectURL(finalBlob);
@@ -212,7 +212,7 @@ export default function DashboardPage() {
         
         const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
         const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
-        finalBlob = new Blob([mergedBytes], { type: "application/pdf" });
+        finalBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
       }
 
       const url = window.URL.createObjectURL(finalBlob);
