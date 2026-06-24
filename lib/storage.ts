@@ -18,6 +18,7 @@ export interface AusbildungContext {
   coverLetterPageNumber: number;
   aiPitch?: string;
   aiClosing?: string;
+  fallbackHook?: string;  // AI-generated hook with [companyName] placeholder, used when companyInfo is empty or hook fails
   cvFileName?: string;
   resumeFileName?: string;
   resumeBlobUrl?: string;  // Vercel Blob URL for the user's full resume (set after onboarding/re-upload)

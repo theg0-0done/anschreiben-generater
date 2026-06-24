@@ -132,14 +132,24 @@ export default function DashboardPage() {
 
   const handleGenerate = async () => {
     if (!context) return;
-    if (!companyName || !companyInfo) {
-      alert("Bitte füllen Sie den Firmennamen und die Firmeninfos aus.");
+    if (!companyName) {
+      alert("Bitte füllen Sie den Firmennamen aus.");
       return;
     }
-    
+
+    // ── Fast path: no companyInfo → use fallback hook immediately ─────────────
+    if (!companyInfo.trim()) {
+      const resolvedFallback = (context.fallbackHook || "")
+        .replace(/\[companyName\]/g, companyName);
+      await generatePdf(resolvedFallback, mode);
+      setHook(resolvedFallback);
+      setShowPreview(true);
+      return;
+    }
+
     const currentKey = `${companyName}-${companyInfo}`;
     if (currentKey === lastCompanyKey && hook) {
-      // Just re-generate PDF with the existing hook instead of running AI again
+      // Re-use cached hook — just regenerate the PDF
       await generatePdf(hook, mode);
       setShowPreview(true);
       return;
@@ -180,7 +190,14 @@ export default function DashboardPage() {
 
       // Extract the generated hook from the response header
       const hookHeader = res.headers.get("X-Generated-Hook");
-      const newHook = hookHeader ? decodeURIComponent(hookHeader) : hook;
+      let newHook = hookHeader ? decodeURIComponent(hookHeader) : "";
+
+      // ── Fallback: if AI didn't return a hook, use the pre-generated one ───────
+      if (!newHook && context.fallbackHook) {
+        newHook = context.fallbackHook.replace(/\[companyName\]/g, companyName);
+        console.log("[dashboard] Using fallback hook (AI returned empty)");
+      }
+
       setHook(newHook);
       setLastCompanyKey(currentKey);
 
@@ -307,14 +324,23 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col relative">
                 <textarea 
                   rows={6}
                   placeholder="Company Infos (z.B. aus der Stellenanzeige kopieren)"
                   value={companyInfo}
-                  onChange={(e) => setCompanyInfo(e.target.value)}
-                  className="w-full flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm resize-none min-h-[150px]"
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    const words = text.trim().split(/\s+/).filter(Boolean);
+                    if (words.length <= 400 || text.length < companyInfo.length) {
+                      setCompanyInfo(text);
+                    }
+                  }}
+                  className="w-full flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm resize-none min-h-[150px] pb-8"
                 />
+                <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400">
+                  {companyInfo.trim().split(/\s+/).filter(Boolean).length} / 400 Wörter
+                </div>
               </div>
             </div>
 

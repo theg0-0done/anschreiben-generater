@@ -59,7 +59,13 @@ export async function POST(req: NextRequest) {
     const cached = pitchCache.get(key);
     if (cached) {
       console.log(`[generate-pitch] ✅ Cache HIT — ${(performance.now() - t0).toFixed(0)}ms total`);
-      return NextResponse.json({ template: cached, cached: true });
+      try {
+        const parsed = JSON.parse(cached);
+        return NextResponse.json({ template: parsed.template, fallbackHook: parsed.fallbackHook ?? "", cached: true });
+      } catch {
+        // Legacy cache entry (plain string) — return it as template with no fallback
+        return NextResponse.json({ template: cached, fallbackHook: "", cached: true });
+      }
     }
 
     const currentDate = new Date().toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -141,20 +147,46 @@ RULE 8 — Tone & length:
 - Each paragraph (pitch and closing) should be 4–6 sentences, suitable for a one-page Anschreiben
 - Maintain natural, fluent German appropriate for a German Ausbildung application
 
-Output ONLY the final cover letter template text. Do not use JSON. Do not wrap in code blocks. Use formal "Sie". Use perfect, professional German.`;
+Output ONLY the following two sections, separated by the exact delimiter lines shown below. Do not add any extra text before, between, or after the delimiters:
+
+===TEMPLATE===
+(The full cover letter template text here — everything from "Sehr geehrte Damen und Herren," to the signature "${firstName} ${lastName}")
+===FALLBACK_HOOK===
+(Write a single compelling German hook paragraph of 2–3 sentences — NO salutation, start directly with the text — that will serve as the opening of the cover letter when no company description is available. The paragraph MUST contain the literal placeholder [companyName] exactly once, used naturally in context, e.g. "bei [companyName] möchte ich…" or "die Ausbildung bei [companyName] bietet…". The hook must be grounded in the applicant's actual CV facts — name specific skills, experiences, or certifications. Do NOT use generic filler phrases. Use formal "Sie". Use perfect, professional German. Maximum 80 words.)
+
+Do not use JSON. Do not wrap in code blocks.`;
 
     const tAI = performance.now();
     console.log(`[generate-pitch] 🤖 AI call START (model: claude-haiku-4-5, prompt ~${prompt.length} chars, cv ~${cvText.split(/\s+/).length} words)`);
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 1200,
+      max_tokens: 1600, // increased to fit template + fallback hook
       messages: [{ role: "user", content: prompt }]
     });
     console.log(`[generate-pitch] 🤖 AI call END — ${(performance.now() - tAI).toFixed(0)}ms`);
 
-    let template = (response.content[0] as any).text.trim();
+    const rawOutput = (response.content[0] as any).text.trim();
 
-    // Post-process to force-capitalize the first letter of each AI-generated paragraph
+    // ── Parse the two sections ─────────────────────────────────────────────────
+    const templateMarker = "===TEMPLATE===";
+    const fallbackMarker = "===FALLBACK_HOOK===";
+    const tmplStart = rawOutput.indexOf(templateMarker);
+    const fallbackStart = rawOutput.indexOf(fallbackMarker);
+
+    let template: string;
+    let fallbackHook: string;
+
+    if (tmplStart !== -1 && fallbackStart !== -1) {
+      template = rawOutput.slice(tmplStart + templateMarker.length, fallbackStart).trim();
+      fallbackHook = rawOutput.slice(fallbackStart + fallbackMarker.length).trim();
+    } else {
+      // Graceful degradation: response without delimiters
+      console.warn("[generate-pitch] ⚠️  Could not find section delimiters — treating entire output as template");
+      template = rawOutput;
+      fallbackHook = "";
+    }
+
+    // Post-process: capitalize first letter of each paragraph in the template
     const tPost = performance.now();
     template = template.split('\n').map((line: string) => {
       const trimmed = line.trim();
@@ -179,10 +211,10 @@ Output ONLY the final cover letter template text. Do not use JSON. Do not wrap i
     if (pitchCache.size >= PITCH_CACHE_MAX) {
       pitchCache.delete(pitchCache.keys().next().value!);
     }
-    pitchCache.set(key, template);
+    pitchCache.set(key, JSON.stringify({ template, fallbackHook }));
 
     console.log(`[generate-pitch] ✅ Done — ${(performance.now() - t0).toFixed(0)}ms total`);
-    return NextResponse.json({ template });
+    return NextResponse.json({ template, fallbackHook });
 
   } catch (error: any) {
     console.error(`[generate-pitch] ❌ Error after ${(performance.now() - (0)).toFixed(0)}ms:`, error);

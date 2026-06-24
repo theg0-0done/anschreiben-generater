@@ -142,7 +142,7 @@ export default function OnboardingPage() {
         throw new Error(errorMsg);
       }
 
-      const { template } = await res.json();
+      const { template, fallbackHook } = await res.json();
       
       // 5. Create and save new Ausbildung Context
       const newContext: AusbildungContext = {
@@ -159,6 +159,7 @@ export default function OnboardingPage() {
         resumeId,
         coverLetterTemplate: template,
         coverLetterPageNumber,
+        fallbackHook: fallbackHook || "",
         cvFileName: cv?.name,
         resumeFileName: resume?.name,
         hasCustomResume: !!resume,

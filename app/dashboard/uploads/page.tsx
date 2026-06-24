@@ -116,8 +116,12 @@ export default function UploadsPage() {
           const data = await res.json();
           setTemplate(data.template);
           
-          // Auto-save the new template
-          const finalContext = { ...updatedContext, coverLetterTemplate: data.template };
+          // Auto-save the new template AND the new fallback hook
+          const finalContext = { 
+            ...updatedContext, 
+            coverLetterTemplate: data.template,
+            fallbackHook: data.fallbackHook || updatedContext.fallbackHook || "",
+          };
           saveActiveContext(finalContext);
           setContext(finalContext);
           setOriginalTemplate(data.template);
