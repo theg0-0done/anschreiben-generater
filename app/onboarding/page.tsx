@@ -277,7 +277,7 @@ export default function OnboardingPage() {
             {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">{errorMsg}</div>}
 
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Ziel-Ausbildungsberuf</label>
                   <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="z.B. Fachinformatiker für Anwendungsentwicklung" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
@@ -288,7 +288,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Vorname</label>
                   <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">E-Mail</label>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
@@ -310,7 +310,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Straße und Hausnummer</label>
                   <input type="text" value={streetHouse} onChange={(e) => setStreetHouse(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
