@@ -259,7 +259,7 @@ export default function BranchPage({
               </div>
 
                <h2 className="text-xs font-bold uppercase tracking-wider text-blue-500 pt-2">
-                Location
+                Standort
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -378,7 +378,7 @@ export default function BranchPage({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full md:flex-none px-8 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
+                className="w-full md:flex-none px-8 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 whitespace-nowrap"
               >
                 {isLoading ? "Wird erstellt…" : "PDF erstellen"}
               </button>
@@ -445,7 +445,7 @@ export default function BranchPage({
                     onClick={triggerDownload}
                     className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm"
                   >
-                    Download
+                    Herunterladen
                   </button>
                   <button
                     onClick={handleReset}

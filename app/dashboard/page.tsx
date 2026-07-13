@@ -263,22 +263,22 @@ export default function DashboardPage() {
     sessionStorage.removeItem("dashboardState");
   };
 
-  if (!context) return <div className="p-8">Lade Daten...</div>;
+  if (!context) return <div className="p-8">Daten werden geladen...</div>;
 
   return (
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
         
         {/* Left Form Panel */}
         <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-8 lg:pb-0">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col shrink-0 min-h-full">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 shrink-0">Company Infos:</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-6 shrink-0">Unternehmensinfos:</h2>
 
             <div className="space-y-4 flex flex-col flex-1">
               <div>
                 <input 
                   type="text" 
-                  placeholder="Company name"
+                  placeholder="Unternehmensname"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
@@ -327,7 +327,7 @@ export default function DashboardPage() {
               <div className="flex-1 flex flex-col relative">
                 <textarea 
                   rows={6}
-                  placeholder="Company Infos (z.B. aus der Stellenanzeige kopieren)"
+                  placeholder="Unternehmensinfos (z.B. aus der Stellenanzeige kopieren)"
                   value={companyInfo}
                   onChange={(e) => {
                     const text = e.target.value;
@@ -351,7 +351,7 @@ export default function DashboardPage() {
                   onChange={(e) => setMode(e.target.value as "cover-letter" | "full-resume")}
                   className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none pr-10"
                 >
-                  <option value="cover-letter">Anschreiben only</option>
+                  <option value="cover-letter">Nur Anschreiben</option>
                   <option value="full-resume">Bewerbungsunterlagen</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -359,10 +359,10 @@ export default function DashboardPage() {
               <button 
                 onClick={handleGenerate}
                 disabled={isGenerating || isUpdatingPdf}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
+                className="flex-1 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
               >
                 {isGenerating || isUpdatingPdf ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Generiere...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Wird generiert...</>
                 ) : (
                   <><Zap className="w-5 h-5" /> PDF erstellen</>
                 )}
@@ -417,7 +417,7 @@ export default function DashboardPage() {
                </div>
              ) : (
                <div className="flex-1 flex items-center justify-center">
-                 <h2 className="text-4xl font-bold text-slate-400 opacity-50">PDF Preview</h2>
+                 <h2 className="text-4xl font-bold text-slate-400 opacity-50">PDF-Vorschau</h2>
                </div>
              )}
 

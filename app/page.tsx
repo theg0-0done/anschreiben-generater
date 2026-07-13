@@ -30,7 +30,7 @@ export default function RootPage() {
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4 text-blue-600">
         <Sparkles className="w-8 h-8 animate-pulse" />
-        <p className="font-medium">Loading Invo...</p>
+        <p className="font-medium">Invo wird geladen...</p>
       </div>
     </div>
   );

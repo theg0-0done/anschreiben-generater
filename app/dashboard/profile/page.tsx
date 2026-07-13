@@ -34,7 +34,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto flex flex-col h-full space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 justify-between mb-8">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <User className="w-5 h-5 text-blue-600" />
             Benutzerinfos
@@ -54,7 +54,7 @@ export default function ProfilePage() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Ausbildungsberuf (Job Title)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Ausbildungsberuf</label>
               <input 
                 type="text" 
                 value={context.jobTitle} 

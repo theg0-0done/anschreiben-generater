@@ -185,12 +185,12 @@ export default function UploadsPage() {
     }
   };
 
-  if (!context) return <div className="p-8">Lade Uploads...</div>;
+  if (!context) return <div className="p-8">Dokumente werden geladen...</div>;
 
   return (
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col space-y-6">
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1">
         
         {/* Left Column: PDFs */}
         <div className="lg:col-span-1 flex flex-col gap-6 h-full">
@@ -198,7 +198,7 @@ export default function UploadsPage() {
           {/* Top Card: CV */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col flex-1 min-h-0">
             <div className="flex items-center justify-between mb-4 shrink-0">
-              <h3 className="text-base font-bold text-slate-800">Resume (CV)</h3>
+              <h3 className="text-base font-bold text-slate-800">Lebenslauf</h3>
               <label htmlFor="cv-upload-input" className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
                 ändern
               </label>
@@ -230,7 +230,7 @@ export default function UploadsPage() {
                ) : (
                  <div className="flex flex-col items-center gap-2 text-slate-400">
                    <FileText className="w-8 h-8 opacity-50" />
-                   <span className="text-sm">Kein CV gefunden</span>
+                   <span className="text-sm">Kein Lebenslauf gefunden</span>
                  </div>
                )}
             </label>
@@ -239,7 +239,7 @@ export default function UploadsPage() {
           {/* Bottom Card: Full Resume */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col flex-1 min-h-0">
             <div className="flex items-center justify-between mb-4 shrink-0">
-              <h3 className="text-base font-bold text-slate-800">Vollständige resume</h3>
+              <h3 className="text-base font-bold text-slate-800">Komplette Bewerbungsunterlagen</h3>
               <label htmlFor="resume-upload-input" className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
                 ändern
               </label>

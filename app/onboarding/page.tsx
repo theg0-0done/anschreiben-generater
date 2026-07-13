@@ -224,7 +224,7 @@ export default function OnboardingPage() {
                 ) : (
                   <>
                     <UploadCloud className="w-10 h-10 text-purple-500 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-slate-700">Lebenslauf (CV)</p>
+                    <p className="text-sm font-medium text-slate-700">Lebenslauf</p>
                     <p className="text-xs text-slate-500 mt-1">Nur Text für die KI (1-2 S.).</p>
                   </>
                 )}
