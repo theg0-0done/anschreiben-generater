@@ -149,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-100 mt-auto">
+      <div className="p-4 border-t border-slate-100 mt-auto space-y-1">
         <div className="flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-all">
           <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
             {activeContext?.firstName?.charAt(0) || "U"}
@@ -157,6 +157,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <span className="text-sm font-medium text-slate-700 truncate">
             {activeContext ? `${activeContext.firstName} ${activeContext.lastName}` : "Benutzer"}
           </span>
+        </div>
+        <div className="flex items-center gap-3 px-4 pb-1">
+          <Link href="/v2/terms" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+            Nutzungsbedingungen
+          </Link>
+          <span className="text-slate-200 text-xs">·</span>
+          <Link href="/v2/privacy" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+            Datenschutz
+          </Link>
         </div>
       </div>
     </>
