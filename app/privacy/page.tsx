@@ -245,7 +245,7 @@ export default function PrivacyPage() {
 
         {/* Footer links */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-          <Link href="/v2/terms" className="hover:text-slate-600 transition-colors">
+          <Link href="/terms" className="hover:text-slate-600 transition-colors">
             Nutzungsbedingungen
           </Link>
           <span>&middot;</span>

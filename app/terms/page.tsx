@@ -180,7 +180,7 @@ export default function TermsPage() {
 
         {/* Footer links */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-          <Link href="/v2/privacy" className="hover:text-slate-600 transition-colors">
+          <Link href="/privacy" className="hover:text-slate-600 transition-colors">
             Datenschutzerklaerung
           </Link>
           <span>&middot;</span>

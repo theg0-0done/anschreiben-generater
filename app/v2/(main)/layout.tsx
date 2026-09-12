@@ -159,11 +159,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </span>
         </div>
         <div className="flex items-center gap-3 px-4 pb-1">
-          <Link href="/v2/terms" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          <Link href="/terms" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
             Nutzungsbedingungen
           </Link>
           <span className="text-slate-200 text-xs">·</span>
-          <Link href="/v2/privacy" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
+          <Link href="/privacy" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
             Datenschutz
           </Link>
         </div>
