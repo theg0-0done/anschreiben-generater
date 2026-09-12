@@ -10,12 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
-    "@google/generative-ai": "^0.24.1",
-    "@react-pdf/renderer": "^4.5.1",
     "@supabase/supabase-js": "^2.116.0",
     "@vercel/blob": "^2.4.1",
-    "cheerio": "^1.2.0",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "googleapis": "^178.0.0",
     "localforage": "^1.10.0",
@@ -25,7 +21,6 @@
     "pdf-parse": "^1.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "tailwind-merge": "^3.6.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {

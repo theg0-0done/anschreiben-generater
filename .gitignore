@@ -23,3 +23,6 @@ data/
 *.tsbuildinfo
 
 .env*
+
+# graphify (local code-graph tool cache/output — not part of the app)
+graphify-out/

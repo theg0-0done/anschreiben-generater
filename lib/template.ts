@@ -44,10 +44,7 @@ function buildSalutation(salutation: string, contactPerson: string): string {
 }
 
 /** Build primary subject line. */
-function buildSubject(jobTitle: string, branch: string): string {
-  if (branch === "gastronomie") {
-    return `Bewerbung um einen Ausbildungsplatz als ${jobTitle}`;
-  }
+function buildSubject(jobTitle: string): string {
   return `Bewerbung um einen Ausbildungsplatz als ${jobTitle}`;
 }
 
@@ -163,7 +160,7 @@ export function fillTemplate(data: FormData): FilledTemplate {
       .replace(/{{companyName}}/g, data.companyName)
       .replace("{{departmentInfo}}", "");
 
-    const subject = buildSubject(data.jobTitle, data.branch);
+    const subject = buildSubject(data.jobTitle);
     const subject2 = buildSubject2(
       data.companyName,
       data.companyZipCity
@@ -188,7 +185,7 @@ export function fillTemplate(data: FormData): FilledTemplate {
     .replace("{{openingParagraph}}", openingParagraph)
     .replace("{{techAddendum}}", techAddendum);
 
-  const subject = buildSubject(data.jobTitle, data.branch);
+  const subject = buildSubject(data.jobTitle);
   const subject2 = buildSubject2(
     data.companyName,
     data.companyZipCity

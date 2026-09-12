@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { getActiveContext, AusbildungContext } from "@/lib/storage";
-import { PDFViewer } from "@react-pdf/renderer";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
-import { CoverLetterPDF } from "@/components/CoverLetterPDF";
 import { Toast } from "@/app/components/Toast";
 import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";

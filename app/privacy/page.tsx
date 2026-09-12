@@ -214,12 +214,12 @@ export default function PrivacyPage() {
                 <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                   <Database className="w-4 h-4 text-slate-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900">6. Datenspeicherung und -loesung</h2>
+                <h2 className="text-xl font-semibold text-slate-900">6. Datenspeicherung und -loeschung</h2>
               </div>
               <p className="text-slate-600 leading-relaxed">
                 Ihre Daten werden gespeichert, solange Sie den Dienst aktiv nutzen. Sie koennen jederzeit die
-                Loesung Ihrer Daten beantragen. Gmail-Verbindungen koennen jederzeit in der App unter dem
-                Gmail-Status-Badge getrennt werden. OAuth-Tokens werden damit sofort unguelig gemacht.
+                Loeschung Ihrer Daten beantragen. Gmail-Verbindungen koennen jederzeit in der App unter dem
+                Gmail-Status-Badge getrennt werden. OAuth-Tokens werden damit sofort ungueltig gemacht.
               </p>
             </section>
 
