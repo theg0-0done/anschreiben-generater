@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { BranchToggle } from "../components/BranchToggle";
+import { BranchToggle } from "../../components/BranchToggle";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

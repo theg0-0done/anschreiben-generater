@@ -12,7 +12,7 @@ import {
   markAsOnboarded, 
   getPDFAsBase64,
   AusbildungContext
-} from "../../lib/storage";
+} from "../../../lib/storage";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
       // 5. Mark as Onboarded
       await markAsOnboarded();
 
-      router.push("/dashboard");
+      router.push("/v2/apply");
 
     } catch (err: any) {
       console.error(err);

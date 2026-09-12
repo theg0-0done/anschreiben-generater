@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, UploadCloud, LayoutDashboard, LogOut, ChevronDown, Plus, PanelLeft, X } from "lucide-react";
+import { User, UploadCloud, LayoutDashboard, LogOut, ChevronDown, Plus, PanelLeft, X, Mail, CalendarClock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getContexts, getActiveContextId, setActiveContextId, AusbildungContext } from "../../lib/storage";
+import { getContexts, getActiveContextId, setActiveContextId, AusbildungContext } from "@/lib/storage";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,12 +15,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailEmail, setGmailEmail] = useState<string | null>(null);
+  const [gmailDropdownOpen, setGmailDropdownOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const gmailDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setContexts(getContexts());
     setActiveId(getActiveContextId());
-  }, []);
+    // Check Gmail auth status
+    fetch("/api/auth/status")
+      .then(res => res.json())
+      .then(data => {
+        setGmailConnected(data.authenticated);
+        if (data.email) setGmailEmail(data.email);
+      })
+      .catch(() => {
+        setGmailConnected(false);
+        setGmailEmail(null);
+      });
+
+    // Check scheduled pending count
+    fetch("/api/send-email/schedule")
+      .then(res => res.json())
+      .then(data => {
+        if (data.scheduled) {
+          const count = data.scheduled.filter((s: any) => s.status === "pending").length;
+          setPendingCount(count);
+        }
+      })
+      .catch(() => {});
+  }, [pathname]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,6 +60,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Close Gmail dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (gmailDropdownRef.current && !gmailDropdownRef.current.contains(event.target as Node)) {
+        setGmailDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleGmailDisconnect = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setGmailConnected(false);
+      setGmailEmail(null);
+      setGmailDropdownOpen(false);
+    } catch (err) {
+      console.error("Failed to disconnect Gmail", err);
+    }
+  };
+
   const handleSelectContext = (id: string) => {
     setActiveContextId(id);
     setDropdownOpen(false);
@@ -41,13 +90,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleAddAusbildung = () => {
     setDropdownOpen(false);
-    router.push("/onboarding");
+    router.push("/v2/onboarding");
   };
 
   const navigation = [
-    { name: "Neue Bewerbung", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Benutzerinfos", href: "/dashboard/profile", icon: User },
-    { name: "Dokumente", href: "/dashboard/uploads", icon: UploadCloud },
+    { name: "Neue Bewerbung", href: "/v2/apply", icon: LayoutDashboard },
+    { name: "Geplante Mails", href: "/v2/scheduled", icon: CalendarClock },
+    { name: "Benutzerinfos", href: "/v2/profile", icon: User },
+    { name: "Dokumente", href: "/v2/uploads", icon: UploadCloud },
   ];
 
   const activeContext = contexts.find(c => c.id === activeId);
@@ -55,12 +105,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const SidebarContent = () => (
     <>
       <div className="p-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-xl text-white">
-            <LayoutDashboard className="w-5 h-5" />
-          </div>
-          <span className="text-xl font-bold text-slate-800 tracking-tight">Invo.</span>
-        </div>
+        <Link href="/v2/apply" className="flex items-center gap-2 group">
+          <span className="font-modak text-3xl text-slate-800 tracking-wide group-hover:text-blue-600 transition-colors select-none leading-none">
+            Anschreibify
+          </span>
+        </Link>
         <button 
           onClick={() => setIsMobileMenuOpen(false)} 
           className="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
@@ -77,14 +126,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               key={item.name}
               href={item.href}
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${
+              className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all font-medium text-sm relative ${
                 isActive 
-                  ? "bg-blue-50 text-blue-600" 
+                  ? "bg-blue-50 text-blue-600 font-semibold" 
                   : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <item.icon className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
-              {item.name}
+              <div className="flex items-center gap-3">
+                <item.icon className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
+                <span>{item.name}</span>
+              </div>
+              {item.href === "/v2/scheduled" && pendingCount > 0 && (
+                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                  {pendingCount}
+                </span>
+              )}
               {isActive && (
                 <motion.div layoutId="sidebar-indicator" className="absolute left-0 w-1 h-8 bg-blue-600 rounded-r-full hidden md:block" />
               )}
@@ -154,19 +210,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <PanelLeft className="w-6 h-6" />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-600 p-1.5 rounded-lg text-white">
-                <LayoutDashboard className="w-4 h-4" />
-              </div>
-              <span className="text-lg font-bold text-slate-800 tracking-tight">Invo.</span>
-            </div>
+            <Link href="/v2/apply" className="flex items-center gap-2">
+              <span className="font-modak text-2xl text-slate-800 tracking-wide select-none leading-none">
+                Anschreibify
+              </span>
+            </Link>
           </div>
 
           <h1 className="text-lg font-semibold text-slate-800 hidden md:block">
             {navigation.find(n => n.href === pathname)?.name || "Übersicht"}
           </h1>
           
-          <div className="flex items-center gap-6 ml-auto shrink-0 pl-2">
+          <div className="flex items-center gap-3 sm:gap-6 ml-auto shrink-0 pl-2">
+             {/* Gmail Status Badge */}
+             <div className="relative" ref={gmailDropdownRef}>
+               {gmailConnected ? (
+                 <>
+                   <button
+                     onClick={() => setGmailDropdownOpen(!gmailDropdownOpen)}
+                     title={gmailEmail || activeContext?.email ? `signed as ${gmailEmail || activeContext?.email}` : "Gmail verbunden"}
+                     className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-medium transition-colors hover:bg-emerald-100 max-w-[200px] sm:max-w-[260px]"
+                   >
+                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                     <span className="truncate">
+                       signed as <strong>{gmailEmail || activeContext?.email || "Gmail"}</strong>
+                     </span>
+                   </button>
+                   <AnimatePresence>
+                     {gmailDropdownOpen && (
+                       <motion.div
+                         initial={{ opacity: 0, y: 5 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         exit={{ opacity: 0, y: 5 }}
+                         className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden z-30 min-w-[200px]"
+                       >
+                         <div className="px-4 py-2 border-b border-slate-100 text-xs text-slate-500 truncate">
+                           {gmailEmail || activeContext?.email || "Gmail"}
+                         </div>
+                         <button
+                           onClick={handleGmailDisconnect}
+                           className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                         >
+                           <LogOut className="w-4 h-4" />
+                           Trennen
+                         </button>
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
+                 </>
+               ) : (
+                 <a
+                   href="/api/auth/google"
+                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-medium transition-colors hover:bg-blue-100"
+                 >
+                   <Mail className="w-3.5 h-3.5" />
+                   <span className="hidden sm:inline">Mit Gmail verbinden</span>
+                   <span className="sm:hidden">Gmail</span>
+                 </a>
+               )}
+             </div>
              {/* Context Dropdown */}
              <div className="relative flex flex-col" ref={dropdownRef}>
                {/* Invisible block to force container width to the widest possible option. Hidden on mobile to prevent overflow. */}

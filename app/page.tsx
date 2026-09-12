@@ -14,13 +14,13 @@ export default function RootPage() {
       try {
         const hasOnboarded = await localforage.getItem("hasOnboarded");
         if (hasOnboarded) {
-          router.replace("/dashboard");
+          router.replace("/v2/apply");
         } else {
-          router.replace("/onboarding");
+          router.replace("/v2/onboarding");
         }
       } catch (err) {
         console.error("Storage error", err);
-        router.replace("/onboarding");
+        router.replace("/v2/onboarding");
       }
     }
     checkOnboarding();
@@ -30,7 +30,7 @@ export default function RootPage() {
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4 text-blue-600">
         <Sparkles className="w-8 h-8 animate-pulse" />
-        <p className="font-medium">Invo wird geladen...</p>
+        <p className="font-medium">Anschreibify wird geladen...</p>
       </div>
     </div>
   );

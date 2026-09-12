@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Anschreiben Generator",
-  description: "German Ausbildung cover letter generator",
+  title: "Anschreibify",
+  description: "Bewerbungs- & Anschreiben Generator",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

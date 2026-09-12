@@ -1,6 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Modak&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.font-modak {
+  font-family: 'Modak', cursive, sans-serif;
+}
 
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {

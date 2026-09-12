@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getActiveContext, getPDF, savePDF, AusbildungContext, saveActiveContext, getPDFAsBase64 } from "../../../lib/storage";
+import { getActiveContext, getPDF, savePDF, AusbildungContext, saveActiveContext, getPDFAsBase64 } from "@/lib/storage";
 import { UploadCloud, FileText, Check, Loader2 } from "lucide-react";
 
 export default function UploadsPage() {
@@ -303,7 +303,7 @@ export default function UploadsPage() {
                 <span className="text-sm font-medium text-slate-600">KI generiert neue Vorlage...</span>
               </div>
             )}
-            <textarea
+            <textarea 
               className="w-full h-full p-6 bg-transparent resize-none focus:outline-none text-slate-700 leading-relaxed font-sans relative z-0"
               value={template}
               onChange={(e) => setTemplate(e.target.value)}

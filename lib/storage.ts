@@ -23,6 +23,8 @@ export interface AusbildungContext {
   resumeFileName?: string;
   resumeBlobUrl?: string;  // Vercel Blob URL for the user's full resume (set after onboarding/re-upload)
   hasCustomResume?: boolean; // kept for legacy compat
+  emailSubject?: string;
+  emailBody?: string;
 }
 
 // ─── localforage Setup (IndexedDB for heavy files) ──────────────────────────
@@ -100,6 +102,12 @@ export function saveActiveContext(context: AusbildungContext): void {
     contexts[index] = context;
     saveContexts(contexts);
   }
+}
+
+export function deleteContext(id: string): void {
+  const contexts = getContexts();
+  const updated = contexts.filter(c => c.id !== id);
+  saveContexts(updated);
 }
 
 // ─── App Global State ───────────────────────────────────────────────────────

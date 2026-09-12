@@ -1,0 +1,432 @@
+{
+  "communities": {
+    "0": [
+      "anthropic_ai_sdk",
+      "cheerio",
+      "clsx",
+      "framer_motion",
+      "google_generative_ai",
+      "googleapis",
+      "localforage",
+      "lucide_react",
+      "next",
+      "package_dependencies",
+      "package_dependencies_anthropic_ai_sdk",
+      "package_dependencies_cheerio",
+      "package_dependencies_clsx",
+      "package_dependencies_framer_motion",
+      "package_dependencies_google_generative_ai",
+      "package_dependencies_googleapis",
+      "package_dependencies_localforage",
+      "package_dependencies_lucide_react",
+      "package_dependencies_next",
+      "package_dependencies_pdf_lib",
+      "package_dependencies_pdf_parse",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_react_pdf_renderer",
+      "package_dependencies_tailwind_merge",
+      "package_dependencies_vercel_blob",
+      "package_dependencies_zod",
+      "pdf_lib",
+      "pdf_parse",
+      "react",
+      "react_dom",
+      "react_pdf_renderer",
+      "tailwind_merge",
+      "vercel_blob",
+      "zod"
+    ],
+    "1": [
+      "app_api_generate_route",
+      "app_api_generate_route_anthropic",
+      "app_api_generate_route_generatehookinline",
+      "app_api_generate_route_hookcache",
+      "app_api_generate_route_hookcachekey",
+      "app_api_generate_route_post",
+      "app_api_generate_route_sanitizefilename",
+      "app_api_generate_route_truncatewords",
+      "lib_pdf_generator",
+      "lib_pdf_generator_drawctx",
+      "lib_pdf_generator_drawleft",
+      "lib_pdf_generator_drawright",
+      "lib_pdf_generator_generatecoverletterpdf",
+      "lib_pdf_generator_wraptext",
+      "lib_template",
+      "lib_template_buildopeningparagraph",
+      "lib_template_buildrecipientlines",
+      "lib_template_buildsalutation",
+      "lib_template_buildsubject",
+      "lib_template_buildsubject2",
+      "lib_template_buildtechaddendum",
+      "lib_template_ensuresentence",
+      "lib_template_filledtemplate",
+      "lib_template_filltemplate",
+      "lib_types",
+      "lib_types_formdata",
+      "lib_types_formdataschema"
+    ],
+    "2": [
+      "ref_dom",
+      "ref_dom_iterable",
+      "ref_esnext",
+      "ref_next_env_d_ts",
+      "ref_next_types_ts",
+      "ref_node_modules",
+      "ref_ts",
+      "ref_tsx",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_esmoduleinterop",
+      "tsconfig_compileroptions_incremental",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_plugins",
+      "tsconfig_compileroptions_resolvejsonmodule",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_compileroptions_target",
+      "tsconfig_exclude",
+      "tsconfig_include"
+    ],
+    "3": [
+      "autoprefixer",
+      "babel_plugin_react_compiler",
+      "package",
+      "package_devdependencies",
+      "package_devdependencies_autoprefixer",
+      "package_devdependencies_babel_plugin_react_compiler",
+      "package_devdependencies_postcss",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_typescript",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_start",
+      "package_scripts_type_check",
+      "package_version",
+      "postcss",
+      "tailwindcss",
+      "types_node",
+      "types_react",
+      "types_react_dom",
+      "typescript"
+    ],
+    "4": [
+      "app_v2_dashboard_layout",
+      "app_v2_dashboard_layout_dashboardlayout",
+      "app_v2_dashboard_layout_dashboardlayout_handleclickoutside",
+      "app_v2_dashboard_profile_page",
+      "app_v2_dashboard_profile_page_profilepage",
+      "app_v2_dashboard_uploads_page",
+      "app_v2_dashboard_uploads_page_uploadspage",
+      "app_v2_onboarding_page",
+      "app_v2_onboarding_page_onboardingpage",
+      "lib_storage",
+      "lib_storage_ausbildungcontext",
+      "lib_storage_checkhasonboarded",
+      "lib_storage_deletecontext",
+      "lib_storage_deletepdf",
+      "lib_storage_getactivecontext",
+      "lib_storage_getactivecontextid",
+      "lib_storage_getcontexts",
+      "lib_storage_getpdf",
+      "lib_storage_getpdfasbase64",
+      "lib_storage_markasonboarded",
+      "lib_storage_pdfstore",
+      "lib_storage_saveactivecontext",
+      "lib_storage_savecontexts",
+      "lib_storage_savepdf",
+      "lib_storage_setactivecontextid"
+    ],
+    "5": [
+      "app_api_auth_callback_route",
+      "app_api_auth_callback_route_get",
+      "app_api_auth_google_route",
+      "app_api_auth_google_route_get",
+      "app_api_auth_logout_route",
+      "app_api_auth_logout_route_post",
+      "app_api_auth_status_route",
+      "app_api_auth_status_route_get",
+      "app_api_send_email_route",
+      "app_api_send_email_route_post",
+      "lib_gmail",
+      "lib_gmail_buildrawemail",
+      "lib_gmail_buildtokencookie",
+      "lib_gmail_cleartokencookie",
+      "lib_gmail_decrypttokens",
+      "lib_gmail_encrypttokens",
+      "lib_gmail_getencryptionkey",
+      "lib_gmail_getoauth2client",
+      "lib_gmail_gettokensfromcookies"
+    ],
+    "6": [
+      "app_components_branchtoggle",
+      "app_components_branchtoggle_branchtoggle",
+      "app_v1_branch_page",
+      "app_v1_branch_page_appstate",
+      "app_v1_branch_page_branchpage",
+      "app_v1_branch_page_branchpage_handlereset",
+      "app_v1_branch_page_branchpage_handlesubmit",
+      "app_v1_branch_page_branchpage_setfield",
+      "app_v1_branch_page_branchpage_triggerdownload",
+      "app_v1_branch_page_default_fields_gastronomie",
+      "app_v1_branch_page_default_fields_informatik",
+      "app_v1_branch_page_field",
+      "app_v1_branch_page_formfields"
+    ],
+    "7": [
+      "app_components_toast",
+      "app_components_toast_toast",
+      "app_components_toast_toastprops",
+      "app_v2_dashboard_page",
+      "app_v2_dashboard_page_dashboardpage",
+      "components_coverletterpdf",
+      "components_coverletterpdf_coverletterpdf",
+      "components_coverletterpdf_coverletterpdfprops",
+      "components_coverletterpdf_styles",
+      "lib_pdf_merger",
+      "lib_pdf_merger_insertcoverletterpage"
+    ],
+    "8": [
+      "app_api_generate_hook_route",
+      "app_api_generate_hook_route_anthropic",
+      "app_api_generate_hook_route_cachekey",
+      "app_api_generate_hook_route_hookcache",
+      "app_api_generate_hook_route_post",
+      "app_api_generate_hook_route_truncatewords"
+    ],
+    "9": [
+      "app_api_generate_pitch_route",
+      "app_api_generate_pitch_route_anthropic",
+      "app_api_generate_pitch_route_cachekey",
+      "app_api_generate_pitch_route_pitchcache",
+      "app_api_generate_pitch_route_post",
+      "app_api_generate_pitch_route_truncatewords"
+    ],
+    "10": [
+      "app_layout",
+      "app_layout_metadata",
+      "app_layout_rootlayout"
+    ],
+    "11": [
+      "app_page",
+      "app_page_rootpage",
+      "app_page_rootpage_checkonboarding"
+    ],
+    "12": [
+      "app_api_upload_resume_route",
+      "app_api_upload_resume_route_post"
+    ],
+    "13": [
+      "app_not_found",
+      "app_not_found_notfound"
+    ],
+    "14": [
+      "app_v1_page",
+      "app_v1_page_v1root"
+    ],
+    "15": [
+      "app_v2_page",
+      "app_v2_page_v2root"
+    ],
+    "16": [
+      "next_config",
+      "next_config_nextconfig"
+    ],
+    "17": [
+      "next_env_d",
+      "next_env_d_rationale_5"
+    ],
+    "18": [
+      "tailwind_config",
+      "tailwind_config_config"
+    ],
+    "19": [
+      "app_api_job_referenznr_route"
+    ],
+    "20": [
+      "postcss_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.05714285714285714,
+    "1": 0.14245014245014245,
+    "2": 0.07407407407407407,
+    "3": 0.07692307692307693,
+    "4": 0.23666666666666666,
+    "5": 0.25146198830409355,
+    "6": 0.16666666666666666,
+    "7": 0.2545454545454545,
+    "8": 0.4666666666666667,
+    "9": 0.4666666666666667,
+    "10": 0.6666666666666666,
+    "11": 0.6666666666666666,
+    "12": 1.0,
+    "13": 1.0,
+    "14": 1.0,
+    "15": 1.0,
+    "16": 1.0,
+    "17": 1.0,
+    "18": 1.0,
+    "19": 1.0,
+    "20": 1.0
+  },
+  "gods": [
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 16
+    },
+    {
+      "id": "lib_storage_getcontexts",
+      "label": "getContexts()",
+      "degree": 10
+    },
+    {
+      "id": "lib_storage_getactivecontext",
+      "label": "getActiveContext()",
+      "degree": 9
+    },
+    {
+      "id": "lib_storage_ausbildungcontext",
+      "label": "AusbildungContext",
+      "degree": 8
+    },
+    {
+      "id": "lib_pdf_generator_generatecoverletterpdf",
+      "label": "generateCoverLetterPdf()",
+      "degree": 8
+    },
+    {
+      "id": "lib_template_filltemplate",
+      "label": "fillTemplate()",
+      "degree": 8
+    },
+    {
+      "id": "app_v2_onboarding_page_onboardingpage",
+      "label": "OnboardingPage()",
+      "degree": 7
+    },
+    {
+      "id": "lib_storage_saveactivecontext",
+      "label": "saveActiveContext()",
+      "degree": 7
+    },
+    {
+      "id": "lib_gmail_getoauth2client",
+      "label": "getOAuth2Client()",
+      "degree": 7
+    },
+    {
+      "id": "app_v2_dashboard_uploads_page_uploadspage",
+      "label": "UploadsPage()",
+      "degree": 6
+    }
+  ],
+  "surprises": [
+    {
+      "source": "CoverLetterPDFProps",
+      "target": "AusbildungContext",
+      "source_files": [
+        "components/CoverLetterPDF.tsx",
+        "lib/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `CoverLetterPDFProps` unexpectedly reaches hub `AusbildungContext`"
+    },
+    {
+      "source": "POST()",
+      "target": "insertCoverLetterPage()",
+      "source_files": [
+        "app/api/generate/route.ts",
+        "lib/pdf-merger.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "DashboardPage()",
+      "target": "getActiveContext()",
+      "source_files": [
+        "app/v2/dashboard/page.tsx",
+        "lib/storage.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "GET()",
+      "target": "getOAuth2Client()",
+      "source_files": [
+        "app/api/auth/google/route.ts",
+        "lib/gmail.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; peripheral node `GET()` unexpectedly reaches hub `getOAuth2Client()`"
+    },
+    {
+      "source": "GET()",
+      "target": "getTokensFromCookies()",
+      "source_files": [
+        "app/api/auth/status/route.ts",
+        "lib/gmail.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; peripheral node `GET()` unexpectedly reaches hub `getTokensFromCookies()`"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `dependencies` connect `dependencies` to `devDependencies`?",
+      "why": "High betweenness centrality (0.061) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `insertCoverLetterPage()` connect `dashboard/page.tsx` to `generate/route.ts`?",
+      "why": "High betweenness centrality (0.024) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `DrawCtx`, `FilledTemplate`, `AppState` to the rest of the system?",
+      "why": "72 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `dependencies` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.05714285714285714 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `generate/route.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.14245014245014245 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `compilerOptions` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07407407407407407 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `devDependencies` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07692307692307693 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

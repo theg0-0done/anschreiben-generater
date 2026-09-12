@@ -12,7 +12,7 @@ export function BranchToggle() {
     <div className="flex justify-center mb-8">
       <div className="bg-gray-200 p-1 rounded-full flex gap-1 shadow-sm">
         <Link
-          href="/informatik"
+          href="/v1/informatik"
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
             isInformatik
               ? "bg-white text-blue-600 shadow-sm"
@@ -22,7 +22,7 @@ export function BranchToggle() {
           Informatik
         </Link>
         <Link
-          href="/gastronomie"
+          href="/v1/gastronomie"
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
             isGastronomie
               ? "bg-white text-orange-600 shadow-sm"
