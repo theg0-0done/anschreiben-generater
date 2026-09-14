@@ -16,7 +16,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/v2/dashboard", destination: "/v2/apply", permanent: true },
       { source: "/v2/dashboard/profile", destination: "/v2/profile", permanent: true },
-      { source: "/v2/dashboard/uploads", destination: "/v2/uploads", permanent: true },
+      { source: "/v2/dashboard/uploads", destination: "/v2/profile?tab=documents", permanent: true },
+      { source: "/v2/uploads", destination: "/v2/profile?tab=documents", permanent: true },
     ];
   },
 };

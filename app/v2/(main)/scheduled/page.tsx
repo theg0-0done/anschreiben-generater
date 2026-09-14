@@ -14,9 +14,7 @@ import {
   MapPin,
   ExternalLink,
   ChevronRight,
-  RefreshCw,
   X,
-  Send,
   Building2,
   User,
   Calendar,
@@ -26,6 +24,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toast } from "@/app/components/Toast";
+import { getActiveContext, JobContext } from "@/lib/data";
 
 interface ScheduledItem {
   id: string;
@@ -44,12 +43,14 @@ interface ScheduledItem {
     contactSalutation?: string;
     location?: string;
     jobTitle?: string;
+    contextId?: string;
     attachments?: string[];
   };
 }
 
 export default function ScheduledEmailsPage() {
   const [items, setItems] = useState<ScheduledItem[]>([]);
+  const [activeContext, setActiveContext] = useState<JobContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "sent" | "cancelled">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,7 +87,23 @@ export default function ScheduledEmailsPage() {
   };
 
   useEffect(() => {
+    getActiveContext().then(setActiveContext);
     fetchItems();
+
+    // Vercel Cron only runs in production, so nothing processes due emails
+    // while developing locally. Nudge the processor whenever this page is
+    // open — catches anything already due on load, then every 30s after.
+    const processDue = () =>
+      fetch("/api/send-email/schedule/process", { method: "POST" })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result?.processed > 0) fetchItems();
+        })
+        .catch(() => {});
+
+    processDue();
+    const interval = setInterval(processDue, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Close search dropdown when clicking outside
@@ -103,9 +120,19 @@ export default function ScheduledEmailsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Scope to the currently active Ausbildung context. Emails scheduled before this
+  // field existed have no contextId, so they're matched by jobTitle as a fallback.
+  const contextItems = useMemo(() => {
+    if (!activeContext) return items;
+    return items.filter((item) => {
+      if (item.metadata?.contextId) return item.metadata.contextId === activeContext.id;
+      return item.metadata?.jobTitle === activeContext.job_title;
+    });
+  }, [items, activeContext]);
+
   // Filtered items (searches exclusively through company names)
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    return contextItems.filter((item) => {
       // Status filter
       if (statusFilter === "pending" && item.status !== "pending") return false;
       if (statusFilter === "sent" && item.status !== "sent") return false;
@@ -120,63 +147,27 @@ export default function ScheduledEmailsPage() {
 
       return true;
     });
-  }, [items, statusFilter, searchQuery]);
+  }, [contextItems, statusFilter, searchQuery]);
 
   // Instant matches for the search dropdown window
   const companyMatches = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    return items.filter((item) => {
+    return contextItems.filter((item) => {
       const company = (item.metadata?.companyName || "").toLowerCase();
       return company.includes(q);
     });
-  }, [items, searchQuery]);
+  }, [contextItems, searchQuery]);
 
   // Counts
   const counts = useMemo(() => {
     return {
-      all: items.length,
-      pending: items.filter((i) => i.status === "pending").length,
-      sent: items.filter((i) => i.status === "sent").length,
-      cancelled: items.filter((i) => i.status === "cancelled" || i.status === "failed").length,
+      all: contextItems.length,
+      pending: contextItems.filter((i) => i.status === "pending").length,
+      sent: contextItems.filter((i) => i.status === "sent").length,
+      cancelled: contextItems.filter((i) => i.status === "cancelled" || i.status === "failed").length,
     };
-  }, [items]);
-
-  // Due items (scheduled in the past and still pending)
-  const dueItems = useMemo(() => {
-    const now = Date.now();
-    return items.filter(
-      (i) => i.status === "pending" && new Date(i.scheduled_at).getTime() <= now
-    );
-  }, [items]);
-
-  const [isProcessingDue, setIsProcessingDue] = useState(false);
-
-  const handleProcessDueEmails = async () => {
-    setIsProcessingDue(true);
-    try {
-      const res = await fetch("/api/send-email/schedule/process", {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Fehler beim Verarbeiten");
-      }
-      if (data.processed > 0) {
-        setToast({
-          message: `✅ ${data.processed} fällige E-Mail(s) erfolgreich versendet!`,
-          type: "success",
-        });
-      } else {
-        setToast({ message: "Keine fälligen E-Mails zum Senden vorhanden.", type: "success" });
-      }
-      await fetchItems();
-    } catch (err: any) {
-      setToast({ message: `❌ ${err.message || "Fehler beim Senden"}`, type: "error" });
-    } finally {
-      setIsProcessingDue(false);
-    }
-  };
+  }, [contextItems]);
 
   // Open reschedule modal
   const handleOpenReschedule = (item: ScheduledItem) => {
@@ -299,28 +290,28 @@ export default function ScheduledEmailsPage() {
     switch (status) {
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             Geplant
           </span>
         );
       case "sent":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Gesendet
           </span>
         );
       case "cancelled":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             Abgebrochen
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             Fehlgeschlagen
           </span>
@@ -329,41 +320,25 @@ export default function ScheduledEmailsPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#f8fafc]">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#f8fafc] dark:bg-slate-950">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Top Header & Search Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight flex items-center gap-2.5">
               <CalendarClock className="w-7 h-7 text-blue-600" />
               Geplante E-Mails
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Verwalten und überwachen Sie alle terminierten Bewerbungen und deren Versandstatus.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {dueItems.length > 0 && (
-              <button
-                onClick={handleProcessDueEmails}
-                disabled={isProcessingDue}
-                title="Alle fälligen E-Mails jetzt versenden"
-                className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md hover:shadow transition-all disabled:opacity-50 shrink-0"
-              >
-                {isProcessingDue ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-                <span>Fällige jetzt senden ({dueItems.length})</span>
-              </button>
-            )}
-
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full sm:w-80" ref={searchContainerRef}>
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
               <input
                 type="text"
                 value={searchQuery}
@@ -373,7 +348,7 @@ export default function ScheduledEmailsPage() {
                   setIsSearchFocused(true);
                 }}
                 placeholder="Unternehmen suchen..."
-                className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm placeholder:text-slate-400"
+                className="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               {searchQuery && (
                 <button
@@ -381,7 +356,7 @@ export default function ScheduledEmailsPage() {
                     setSearchQuery("");
                     setIsSearchFocused(false);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 z-10"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -395,20 +370,20 @@ export default function ScheduledEmailsPage() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.98 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden z-50 max-h-80 flex flex-col"
+                    className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden z-50 max-h-80 flex flex-col"
                   >
-                    <div className="px-3.5 py-2 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <div className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                       <span>Ergebnisse ({companyMatches.length})</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Klicken für Details</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Klicken für Details</span>
                     </div>
 
                     <div className="overflow-y-auto p-1.5 divide-y divide-slate-50">
                       {companyMatches.length === 0 ? (
                         <div className="p-6 text-center space-y-1.5">
                           <Building2 className="w-6 h-6 text-slate-300 mx-auto" />
-                          <p className="text-xs font-semibold text-slate-700">Kein Unternehmen gefunden</p>
-                          <p className="text-[11px] text-slate-400">
-                            Keine Treffer für &ldquo;<span className="text-slate-600 font-medium">{searchQuery}</span>&rdquo;
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Kein Unternehmen gefunden</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                            Keine Treffer für &ldquo;<span className="text-slate-600 dark:text-slate-300 font-medium">{searchQuery}</span>&rdquo;
                           </p>
                         </div>
                       ) : (
@@ -422,17 +397,17 @@ export default function ScheduledEmailsPage() {
                                 setPreviewItem(match);
                                 setIsSearchFocused(false);
                               }}
-                              className="p-2.5 rounded-xl hover:bg-blue-50/70 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                              className="p-2.5 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                                   {initial}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 truncate">
+                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 truncate">
                                     {company}
                                   </p>
-                                  <p className="text-[11px] text-slate-400 truncate">
+                                  <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
                                     {match.metadata?.jobTitle || match.subject}
                                   </p>
                                 </div>
@@ -450,20 +425,11 @@ export default function ScheduledEmailsPage() {
                 )}
               </AnimatePresence>
             </div>
-
-            <button
-              onClick={fetchItems}
-              disabled={loading}
-              title="Aktualisieren"
-              className="p-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl shadow-sm transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
-            </button>
           </div>
         </div>
 
         {/* Filter Tabs (Screenshot inspired) */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2 overflow-x-auto">
           {[
             { id: "all", label: "Alle Mails", count: counts.all },
             { id: "pending", label: "Geplant", count: counts.pending },
@@ -477,14 +443,14 @@ export default function ScheduledEmailsPage() {
                 onClick={() => setStatusFilter(tab.id as any)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
                   isActive
-                    ? "bg-white text-blue-600 shadow-sm border border-slate-200/80 font-semibold"
-                    : "text-slate-500 hover:text-slate-800 hover:bg-white/60"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-700 font-semibold"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white/60 dark:hover:bg-slate-800/60"
                 }`}
               >
                 {tab.label}
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"
+                    isActive ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                   }`}
                 >
                   {tab.count}
@@ -495,13 +461,12 @@ export default function ScheduledEmailsPage() {
         </div>
 
         {/* Main Structured Table (inspired by attached screenshot) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                   <th className="py-3.5 pl-6 pr-4 font-semibold">Unternehmen & Kontakt</th>
-                  <th className="py-3.5 px-4 font-semibold">Stelle & Betreff</th>
                   <th className="py-3.5 px-4 font-semibold">E-Mail</th>
                   <th className="py-3.5 px-4 font-semibold">Anhänge</th>
                   <th className="py-3.5 px-4 font-semibold">Geplantes Senden</th>
@@ -513,20 +478,20 @@ export default function ScheduledEmailsPage() {
               <tbody className="divide-y divide-slate-100 text-sm">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-16 text-center text-slate-400">
+                    <td colSpan={6} className="py-16 text-center text-slate-400 dark:text-slate-500">
                       <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
                       Lade geplante E-Mails...
                     </td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-16 text-center text-slate-400">
+                    <td colSpan={6} className="py-16 text-center text-slate-400 dark:text-slate-500">
                       <div className="max-w-sm mx-auto space-y-2">
-                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-3">
+                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500 mb-3">
                           <CalendarClock className="w-6 h-6" />
                         </div>
-                        <p className="font-semibold text-slate-700">Keine E-Mails gefunden</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="font-semibold text-slate-700 dark:text-slate-200">Keine E-Mails gefunden</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
                           {searchQuery
                             ? "Keine E-Mails entsprechen Ihrer Suchanfrage."
                             : "Sie haben aktuell keine E-Mails in diesem Status geplant."}
@@ -547,8 +512,8 @@ export default function ScheduledEmailsPage() {
                         key={item.id}
                         className={`group transition-colors ${
                           isOverdueOrFailed
-                            ? "bg-rose-50/40 hover:bg-rose-50/70"
-                            : "hover:bg-slate-50/80"
+                            ? "bg-rose-50/40 dark:bg-rose-950/30 hover:bg-rose-50/70 dark:hover:bg-rose-950/50"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800/80"
                         }`}
                       >
                         {/* Name / Company (Dual-Line with Avatar) */}
@@ -561,35 +526,20 @@ export default function ScheduledEmailsPage() {
                               {initial}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 group-hover/link:text-blue-600 transition-colors truncate max-w-[200px]">
+                              <p className="font-semibold text-slate-900 dark:text-slate-50 group-hover/link:text-blue-600 transition-colors truncate max-w-[200px]">
                                 {company}
                               </p>
-                              <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
                                 {contact}
                               </p>
                             </div>
                           </div>
                         </td>
 
-                        {/* Job Title & Subject */}
-                        <td className="py-4 px-4">
-                          <div
-                            onClick={() => setPreviewItem(item)}
-                            className="cursor-pointer max-w-[220px]"
-                          >
-                            <p className="font-medium text-slate-800 truncate">
-                              {item.metadata?.jobTitle || "Bewerbung"}
-                            </p>
-                            <p className="text-xs text-slate-400 truncate" title={item.subject}>
-                              {item.subject}
-                            </p>
-                          </div>
-                        </td>
-
                         {/* Company Email */}
                         <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 text-slate-600 text-xs">
-                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                             <a
                               href={`mailto:${item.to_email}`}
                               title={item.to_email}
@@ -610,16 +560,16 @@ export default function ScheduledEmailsPage() {
                               item.metadata.attachments.map((att, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                   title={att}
                                 >
-                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                                   <span className="truncate max-w-[110px]">{att}</span>
                                 </span>
                               ))
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200/60">
-                                <FileText className="w-3 h-3 text-slate-400" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700">
+                                <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                                 {item.file_name}
                               </span>
                             )}
@@ -629,12 +579,12 @@ export default function ScheduledEmailsPage() {
                         {/* Scheduled Time & Countdown */}
                         <td className="py-4 px-4 whitespace-nowrap">
                           <div>
-                            <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <div className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-100 text-xs">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                               {formatDateTime(item.scheduled_at)}
                             </div>
                             {relativeTime && (
-                              <span className="inline-block mt-0.5 text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                              <span className="inline-block mt-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
                                 {relativeTime}
                               </span>
                             )}
@@ -651,7 +601,7 @@ export default function ScheduledEmailsPage() {
                             <button
                               onClick={() => setPreviewItem(item)}
                               title="Details & PDF anzeigen"
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full transition-colors"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -661,7 +611,7 @@ export default function ScheduledEmailsPage() {
                               <button
                                 onClick={() => handleOpenReschedule(item)}
                                 title="Sendezeitpunkt verschieben"
-                                className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-full transition-colors"
+                                className="p-1.5 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 rounded-full transition-colors"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -671,7 +621,7 @@ export default function ScheduledEmailsPage() {
                             <button
                               onClick={() => setDeleteItem(item)}
                               title={item.status === "pending" ? "Planung abbrechen" : "Löschen"}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors"
+                              className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-full transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -695,23 +645,23 @@ export default function ScheduledEmailsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl">
                     <Pencil className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900">Sendezeitpunkt anpassen</h3>
-                    <p className="text-xs text-slate-500">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-50">Sendezeitpunkt anpassen</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {rescheduleItem.metadata?.companyName || "Unternehmen"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setRescheduleItem(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -720,35 +670,35 @@ export default function ScheduledEmailsPage() {
               <div className="p-6 space-y-4">
                 {/* Presets */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
                     Schnellauswahl
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => applyPreset(1, 8, 30)}
-                      className="px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 text-left transition-colors"
+                      className="px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-left transition-colors"
                     >
                       🌅 Morgen um 08:30 Uhr
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset(1, 14, 0)}
-                      className="px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 text-left transition-colors"
+                      className="px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-left transition-colors"
                     >
                       ☀️ Morgen um 14:00 Uhr
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset(2, 9, 0)}
-                      className="px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 text-left transition-colors"
+                      className="px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-left transition-colors"
                     >
                       📅 In 2 Tagen um 09:00 Uhr
                     </button>
                     <button
                       type="button"
                       onClick={() => applyPreset(7, 9, 0)}
-                      className="px-3 py-2 text-xs font-medium border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 text-left transition-colors"
+                      className="px-3 py-2 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-left transition-colors"
                     >
                       💼 In 1 Woche um 09:00 Uhr
                     </button>
@@ -758,31 +708,31 @@ export default function ScheduledEmailsPage() {
                 {/* Custom Pickers */}
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Datum</label>
+                    <label className="text-xs font-medium text-slate-700 dark:text-slate-200 block mb-1">Datum</label>
                     <input
                       type="date"
                       value={rescheduleDate}
                       onChange={(e) => setRescheduleDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Uhrzeit</label>
+                    <label className="text-xs font-medium text-slate-700 dark:text-slate-200 block mb-1">Uhrzeit</label>
                     <input
                       type="time"
                       value={rescheduleTime}
                       onChange={(e) => setRescheduleTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setRescheduleItem(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors"
                 >
                   Abbrechen
                 </button>
@@ -809,21 +759,21 @@ export default function ScheduledEmailsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
             >
               <div className="p-6 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
                   <Trash2 className="w-6 h-6" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg">Geplante E-Mail löschen?</h3>
-                <p className="text-sm text-slate-500">
+                <h3 className="font-bold text-slate-900 dark:text-slate-50 text-lg">Geplante E-Mail löschen?</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Möchten Sie den geplanten Versand an{" "}
                   <strong>{deleteItem.metadata?.companyName || deleteItem.to_email}</strong> wirklich
                   abbrechen?
                 </p>
               </div>
 
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+              <div className="p-6 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
                 {deleteItem.status === "pending" && (
                   <button
                     type="button"
@@ -845,7 +795,7 @@ export default function ScheduledEmailsPage() {
                 <button
                   type="button"
                   onClick={() => setDeleteItem(null)}
-                  className="w-full py-2 px-4 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                  className="w-full py-2 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors"
                 >
                   Zurück
                 </button>
@@ -864,65 +814,65 @@ export default function ScheduledEmailsPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden"
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden"
             >
               {/* Drawer Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
                     {previewItem.metadata?.companyName?.charAt(0).toUpperCase() || "U"}
                   </div>
                   <div>
-                    <h2 className="font-bold text-slate-900 text-lg">
+                    <h2 className="font-bold text-slate-900 dark:text-slate-50 text-lg">
                       {previewItem.metadata?.companyName || "Unternehmen"}
                     </h2>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Empfänger: {previewItem.to_email}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setPreviewItem(null)}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Drawer Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Meta details cards */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                       Status
                     </span>
                     <div>{renderStatus(previewItem.status)}</div>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                       Geplanter Versand
                     </span>
-                    <span className="text-xs font-semibold text-slate-800">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
                       {formatDateTime(previewItem.scheduled_at)}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                       Ansprechpartner
                     </span>
-                    <span className="text-xs font-medium text-slate-700">
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
                       {previewItem.metadata?.contactPerson || "Personalabteilung"}
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                       Standort
                     </span>
-                    <span className="text-xs font-medium text-slate-700">
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
                       {previewItem.metadata?.location || "Deutschland"}
                     </span>
                   </div>
@@ -930,14 +880,14 @@ export default function ScheduledEmailsPage() {
 
                 {/* Subject & Body */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     E-Mail Betreff & Inhalt
                   </h4>
-                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-3">
-                    <p className="font-semibold text-sm text-slate-800">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-3">
+                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">
                       {previewItem.subject}
                     </p>
-                    <div className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed font-mono">
+                    <div className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-mono">
                       {previewItem.body}
                     </div>
                   </div>
@@ -946,7 +896,7 @@ export default function ScheduledEmailsPage() {
                 {/* PDF Document Preview */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       Bewerbungsunterlagen (PDF)
                     </h4>
                     <a
@@ -960,7 +910,7 @@ export default function ScheduledEmailsPage() {
                     </a>
                   </div>
 
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-100 h-96 shadow-inner">
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 h-96 shadow-inner">
                     <iframe
                       src={`/api/send-email/schedule?id=${previewItem.id}&pdf=true`}
                       className="w-full h-full"
@@ -971,7 +921,7 @@ export default function ScheduledEmailsPage() {
               </div>
 
               {/* Drawer Footer Actions */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   {previewItem.status === "pending" && (
                     <button
@@ -992,7 +942,7 @@ export default function ScheduledEmailsPage() {
                       setPreviewItem(null);
                       setDeleteItem(itm);
                     }}
-                    className="px-4 py-2 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/70 transition-colors flex items-center gap-1.5"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     {previewItem.status === "pending" ? "Abbrechen" : "Löschen"}
@@ -1001,7 +951,7 @@ export default function ScheduledEmailsPage() {
 
                 <button
                   onClick={() => setPreviewItem(null)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors"
                 >
                   Schließen
                 </button>

@@ -1,37 +1,39 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { handleOAuthCode } from "@/lib/auth-callback";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import localforage from "localforage";
-import { Sparkles } from "lucide-react";
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string }>;
+}) {
+  // Some Supabase project configs redirect the OAuth code to the Site URL
+  // (this root page) instead of the exact redirectTo passed at sign-in —
+  // handle it here too so sign-in still completes either way.
+  const { code } = await searchParams;
+  if (code) {
+    await handleOAuthCode(code);
+  }
 
-export default function RootPage() {
-  const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    async function checkOnboarding() {
-      try {
-        const hasOnboarded = await localforage.getItem("hasOnboarded");
-        if (hasOnboarded) {
-          router.replace("/v2/apply");
-        } else {
-          router.replace("/v2/onboarding");
-        }
-      } catch (err) {
-        console.error("Storage error", err);
-        router.replace("/v2/onboarding");
-      }
-    }
-    checkOnboarding();
-  }, [router]);
+  if (!user) {
+    redirect("/login");
+  }
 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4 text-blue-600">
-        <Sparkles className="w-8 h-8 animate-pulse" />
-        <p className="font-medium">Anschreibify wird geladen...</p>
-      </div>
-    </div>
-  );
+  // Only count a context as "onboarded" once its documents actually made it to
+  // Storage — a context row can exist with null paths if upload failed mid-onboarding.
+  const { count } = await supabase
+    .from("job_contexts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .not("resume_storage_path", "is", null)
+    .not("cv_storage_path", "is", null);
+
+  if (count && count > 0) {
+    redirect("/v2/apply");
+  } else {
+    redirect("/v2/onboarding");
+  }
 }

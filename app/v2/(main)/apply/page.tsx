@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getActiveContext, AusbildungContext } from "@/lib/storage";
-import { PDFViewer } from "@react-pdf/renderer";
+import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, JobContext, Profile } from "@/lib/data";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
-import { CoverLetterPDF } from "@/components/CoverLetterPDF";
 import { Toast } from "@/app/components/Toast";
+import { LoadingState } from "@/app/components/LoadingState";
 import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ApplyPage() {
-  const [context, setContext] = useState<AusbildungContext | null>(null);
+  const [context, setContext] = useState<JobContext | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const [companyName, setCompanyName] = useState("");
   const [contactSalutation, setContactSalutation] = useState("");
@@ -40,7 +40,8 @@ export default function ApplyPage() {
 
   // Load context and restored state
   useEffect(() => {
-    setContext(getActiveContext());
+    getActiveContext().then(setContext);
+    getProfile().then(setProfile);
     const saved = sessionStorage.getItem("dashboardState");
     if (saved) {
       try {
@@ -96,28 +97,28 @@ export default function ApplyPage() {
     setIsUpdatingPdf(true);
     try {
       // For full-resume mode, just pass the Blob URL — no upload needed
-      if (currentMode === "full-resume" && !context.resumeBlobUrl) {
-        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf auf der Uploads-Seite hoch.");
+      if (currentMode === "full-resume" && !context.resume_storage_path) {
+        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Benutzerinfos > Dokumente hoch.");
         setIsUpdatingPdf(false);
         return;
       }
 
-      const branchStr = (context.jobTitle.toLowerCase().includes("hotel") || context.jobTitle.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
+      const branchStr = (context.job_title.toLowerCase().includes("hotel") || context.job_title.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           branch: branchStr,
           companyName,
-          jobTitle: context.jobTitle,
+          jobTitle: context.job_title,
           companyStreet: street,
           companyZipCity: postalCity,
           contactPerson,
           contactSalutation,
           mode: "cover-letter", // Server only generates the cover letter now
-          coverLetterPageNumber: context.coverLetterPageNumber || 1,
+          coverLetterPageNumber: context.cover_letter_page_number || 1,
           customHook: currentHook,
-          coverLetterTemplate: context.coverLetterTemplate,
+          coverLetterTemplate: context.cover_letter_template,
         }),
       });
       if (!res.ok) throw new Error("Fehler bei der PDF-Generierung");
@@ -125,13 +126,13 @@ export default function ApplyPage() {
       let finalBlob = await res.blob();
 
       // Client-side merging for Vercel speed
-      if (currentMode === "full-resume" && context.resumeBlobUrl) {
+      if (currentMode === "full-resume" && context.resume_storage_path) {
         const coverBuffer = new Uint8Array(await finalBlob.arrayBuffer());
-        const resumeRes = await fetch(context.resumeBlobUrl);
-        if (!resumeRes.ok) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
-        const resumeBuffer = new Uint8Array(await resumeRes.arrayBuffer());
+        const resumeBlob = await getJobDocumentBlob(context.resume_storage_path);
+        if (!resumeBlob) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
+        const resumeBuffer = new Uint8Array(await resumeBlob.arrayBuffer());
         
-        const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
+        const insertIndex = Math.max(0, (context.cover_letter_page_number || 1) - 1);
         const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
         finalBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
       }
@@ -158,7 +159,7 @@ export default function ApplyPage() {
 
     // ── Fast path: no companyInfo → use fallback hook immediately ─────────────
     if (!companyInfo.trim()) {
-      const resolvedFallback = (context.fallbackHook || "")
+      const resolvedFallback = (context.fallback_hook || "")
         .replace(/\[companyName\]/g, companyName);
       await generatePdf(resolvedFallback, mode);
       setHook(resolvedFallback);
@@ -177,31 +178,31 @@ export default function ApplyPage() {
     setIsGenerating(true);
     try {
       // For full-resume mode, just pass the Blob URL — no upload needed
-      if (mode === "full-resume" && !context.resumeBlobUrl) {
-        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf auf der Uploads-Seite hoch.");
+      if (mode === "full-resume" && !context.resume_storage_path) {
+        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Benutzerinfos > Dokumente hoch.");
         setIsGenerating(false);
         return;
       }
 
-      const branchStr = (context.jobTitle.toLowerCase().includes("hotel") || context.jobTitle.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
+      const branchStr = (context.job_title.toLowerCase().includes("hotel") || context.job_title.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           branch: branchStr,
           companyName,
-          jobTitle: context.jobTitle,
+          jobTitle: context.job_title,
           companyStreet: street,
           companyZipCity: postalCity,
           contactPerson,
           contactSalutation,
           mode: "cover-letter", // Server only generates the cover letter
-          coverLetterPageNumber: context.coverLetterPageNumber || 1,
-          coverLetterTemplate: context.coverLetterTemplate,
+          coverLetterPageNumber: context.cover_letter_page_number || 1,
+          coverLetterTemplate: context.cover_letter_template,
           // Pass companyInfo + names so the server generates the hook inline
           companyInfo,
-          firstName: context.firstName,
-          lastName: context.lastName,
+          firstName: profile?.first_name,
+          lastName: profile?.last_name,
         }),
       });
 
@@ -212,8 +213,8 @@ export default function ApplyPage() {
       let newHook = hookHeader ? decodeURIComponent(hookHeader) : "";
 
       // ── Fallback: if AI didn't return a hook, use the pre-generated one ───────
-      if (!newHook && context.fallbackHook) {
-        newHook = context.fallbackHook.replace(/\[companyName\]/g, companyName);
+      if (!newHook && context.fallback_hook) {
+        newHook = context.fallback_hook.replace(/\[companyName\]/g, companyName);
         console.log("[dashboard] Using fallback hook (AI returned empty)");
       }
 
@@ -223,13 +224,13 @@ export default function ApplyPage() {
       let finalBlob = await res.blob();
 
       // Client-side merging for Vercel speed
-      if (mode === "full-resume" && context.resumeBlobUrl) {
+      if (mode === "full-resume" && context.resume_storage_path) {
         const coverBuffer = new Uint8Array(await finalBlob.arrayBuffer());
-        const resumeRes = await fetch(context.resumeBlobUrl);
-        if (!resumeRes.ok) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
-        const resumeBuffer = new Uint8Array(await resumeRes.arrayBuffer());
+        const resumeBlob = await getJobDocumentBlob(context.resume_storage_path);
+        if (!resumeBlob) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
+        const resumeBuffer = new Uint8Array(await resumeBlob.arrayBuffer());
         
-        const insertIndex = Math.max(0, (context.coverLetterPageNumber || 1) - 1);
+        const insertIndex = Math.max(0, (context.cover_letter_page_number || 1) - 1);
         const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
         finalBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
       }
@@ -261,8 +262,8 @@ export default function ApplyPage() {
     a.href = pdfUrl;
     
     const filename = mode === "cover-letter" 
-      ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${context?.firstName}_${context?.lastName}.pdf` 
-      : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${context?.firstName}_${context?.lastName}.pdf`;
+      ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf` 
+      : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`;
       
     a.download = filename;
     a.click();
@@ -283,7 +284,38 @@ export default function ApplyPage() {
     sessionStorage.removeItem("dashboardState");
   };
 
-  // ── Shared: build email payload from current state ───────────────────────
+  // ── Shared: build the subject/body/fileName from current state ───────────
+  const buildEmailContent = () => {
+    const salutation = contactPerson
+      ? `Sehr geehrte${contactSalutation === "Frau" ? " Frau" : "r Herr"} ${contactPerson}`
+      : "Sehr geehrte Damen und Herren";
+
+    let subject = context!.email_subject || `Bewerbung als ${context!.job_title} – ${profile?.first_name} ${profile?.last_name}`;
+    let emailBody = context!.email_body || `[Salutation],\n\nhiermit bewerbe ich mich auf die Stelle als [JobTitle].\nErbeten finden Sie meine Bewerbungsunterlagen im Anhang.\n\nMit freundlichen Grüßen\n[FirstName] [LastName]\n[Phone]\n[Email]`;
+
+    const replacements: Record<string, string> = {
+      "\\[Salutation\\]": salutation,
+      "\\[JobTitle\\]": context!.job_title,
+      "\\[CompanyName\\]": companyName || "das Unternehmen",
+      "\\[FirstName\\]": profile?.first_name || "",
+      "\\[LastName\\]": profile?.last_name || "",
+      "\\[Phone\\]": profile?.phone || "",
+      "\\[Email\\]": profile?.email || "",
+    };
+
+    for (const [key, value] of Object.entries(replacements)) {
+      const regex = new RegExp(key, "gi");
+      subject = subject.replace(regex, value);
+      emailBody = emailBody.replace(regex, value);
+    }
+
+    const fileName =
+      `Bewerbungsunterlagen_${companyName.replace(/\s+/g, "_")}_${profile?.first_name}_${profile?.last_name}.pdf`;
+
+    return { subject, body: emailBody, fileName };
+  };
+
+  // Instant send: attaches the PDF as base64 in the request straight to Gmail.
   const buildEmailPayload = async () => {
     if (!context || !pdfUrl || !companyEmail) return null;
     const pdfResponse = await fetch(pdfUrl);
@@ -297,33 +329,27 @@ export default function ApplyPage() {
     }
     const pdfBase64 = window.btoa(binary);
 
-    const salutation = contactPerson
-      ? `Sehr geehrte${contactSalutation === "Frau" ? " Frau" : "r Herr"} ${contactPerson}`
-      : "Sehr geehrte Damen und Herren";
+    const { subject, body, fileName } = buildEmailContent();
+    return { to: companyEmail, subject, body, pdfBase64, fileName };
+  };
 
-    let subject = context.emailSubject || `Bewerbung als ${context.jobTitle} – ${context.firstName} ${context.lastName}`;
-    let emailBody = context.emailBody || `[Salutation],\n\nhiermit bewerbe ich mich auf die Stelle als [JobTitle].\nErbeten finden Sie meine Bewerbungsunterlagen im Anhang.\n\nMit freundlichen Grüßen\n[FirstName] [LastName]\n[Phone]\n[Email]`;
+  // Scheduled send: uploads the PDF straight to Storage from the browser (one
+  // hop) instead of round-tripping a base64-inflated copy through our server
+  // (two hops) — this is what made scheduling take 30-40s for a multi-MB file.
+  const buildSchedulePayload = async () => {
+    if (!context || !pdfUrl || !companyEmail) return null;
+    const t0 = performance.now();
+    const pdfResponse = await fetch(pdfUrl);
+    const pdfBlob = await pdfResponse.blob();
+    const t1 = performance.now();
+    const pdfStoragePath = await uploadScheduledPdf(pdfBlob);
+    const t2 = performance.now();
+    console.log(
+      `[schedule] blob read: ${(t1 - t0).toFixed(0)}ms, storage upload: ${(t2 - t1).toFixed(0)}ms, size: ${(pdfBlob.size / 1024).toFixed(0)}KB`
+    );
 
-    const replacements: Record<string, string> = {
-      "\\[Salutation\\]": salutation,
-      "\\[JobTitle\\]": context.jobTitle,
-      "\\[CompanyName\\]": companyName || "das Unternehmen",
-      "\\[FirstName\\]": context.firstName,
-      "\\[LastName\\]": context.lastName,
-      "\\[Phone\\]": context.phone,
-      "\\[Email\\]": context.email,
-    };
-
-    for (const [key, value] of Object.entries(replacements)) {
-      const regex = new RegExp(key, "gi");
-      subject = subject.replace(regex, value);
-      emailBody = emailBody.replace(regex, value);
-    }
-
-    const fileName =
-      `Bewerbungsunterlagen_${companyName.replace(/\s+/g, "_")}_${context.firstName}_${context.lastName}.pdf`;
-
-    return { to: companyEmail, subject, body: emailBody, pdfBase64, fileName };
+    const { subject, body, fileName } = buildEmailContent();
+    return { to: companyEmail, subject, body, pdfStoragePath, fileName };
   };
 
   const handleSendEmail = async () => {
@@ -359,13 +385,13 @@ export default function ApplyPage() {
     setShowScheduleMenu(false);
     setShowCustomDatePicker(false);
     try {
-      const payload = await buildEmailPayload();
+      const payload = await buildSchedulePayload();
       if (!payload) throw new Error("Payload konnte nicht erstellt werden.");
 
       const locationParts = [street, postalCity].filter(Boolean);
       const fullLocation = locationParts.length > 0 ? locationParts.join(", ") : "Deutschland";
-      
-      const attachmentsList = mode === "full-resume" 
+
+      const attachmentsList = mode === "full-resume"
         ? ["Anschreiben", "Lebenslauf & Zeugnisse"]
         : ["Anschreiben (PDF)"];
 
@@ -374,7 +400,8 @@ export default function ApplyPage() {
         contactPerson: contactPerson.trim() || "Personalabteilung",
         contactSalutation: contactSalutation || "",
         location: fullLocation,
-        jobTitle: context.jobTitle || "Bewerbung",
+        jobTitle: context.job_title || "Bewerbung",
+        contextId: context.id,
         attachments: attachmentsList,
       };
 
@@ -421,17 +448,17 @@ export default function ApplyPage() {
     ];
   };
 
-  if (!context) return <div className="p-8">Daten werden geladen...</div>;
+  if (!context) return <LoadingState message="Daten werden geladen..." />;
 
   return (
     <>
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 flex-1">
         
         {/* Left Form Panel */}
         <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-8 lg:pb-0">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 flex flex-col shrink-0 min-h-full">
-            <h2 className="text-xl font-bold text-slate-800 mb-6 shrink-0">Unternehmensinfos:</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 flex flex-col shrink-0 min-h-full">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6 shrink-0">Unternehmensinfos:</h2>
 
             <div className="space-y-4 flex flex-col flex-1">
               <div>
@@ -440,46 +467,46 @@ export default function ApplyPage() {
                   placeholder="Unternehmensname"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-2 sm:gap-4">
                 <div className="relative w-1/3">
-                  <select 
-                    value={contactSalutation} 
+                  <select
+                    value={contactSalutation}
                     onChange={(e) => setContactSalutation(e.target.value)}
-                    className="w-full h-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm appearance-none pr-10"
+                    className="w-full h-full pl-3 pr-7 sm:px-4 sm:pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 appearance-none"
                   >
                     <option value=""></option>
                     <option value="Herr">Herr</option>
                     <option value="Frau">Frau</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Ansprechpartner (Nachname)"
                   value={contactPerson}
                   onChange={(e) => setContactPerson(e.target.value)}
-                  className="w-2/3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                  className="w-2/3 px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <input 
-                  type="text" 
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <input
+                  type="text"
                   placeholder="Straße & Hausnr."
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                  className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="PLZ & Stadt"
                   value={postalCity}
                   onChange={(e) => setPostalCity(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                  className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
 
@@ -489,7 +516,7 @@ export default function ApplyPage() {
                   placeholder="E-Mail des Unternehmens"
                   value={companyEmail}
                   onChange={(e) => setCompanyEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
 
@@ -505,30 +532,30 @@ export default function ApplyPage() {
                       setCompanyInfo(text);
                     }
                   }}
-                  className="w-full flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm resize-none min-h-[150px] pb-8"
+                  className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[150px] pb-8"
                 />
-                <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400">
+                <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400 dark:text-slate-500">
                   {companyInfo.trim().split(/\s+/).filter(Boolean).length} / 400 Wörter
                 </div>
               </div>
             </div>
 
-            <div className="mt-auto pt-6 flex gap-4 items-center shrink-0">
-              <div className="relative w-56">
-                <select 
+            <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-4 sm:items-center shrink-0">
+              <div className="relative w-full sm:w-56">
+                <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as "cover-letter" | "full-resume")}
-                  className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none pr-10"
+                  className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none pr-10"
                 >
                   <option value="cover-letter">Nur Anschreiben</option>
                   <option value="full-resume">Bewerbungsunterlagen</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-slate-400 pointer-events-none" />
               </div>
-              <button 
+              <button
                 onClick={handleGenerate}
                 disabled={isGenerating || isUpdatingPdf}
-                className="flex-1 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
+                className="w-full sm:flex-1 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
               >
                 {isGenerating || isUpdatingPdf ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Wird generiert...</>
@@ -544,13 +571,13 @@ export default function ApplyPage() {
         {/* Right Preview Panel */}
         <div className="lg:col-span-1 flex flex-col h-full pb-8 lg:pb-0">
            {showPreview && (
-             <div className="mb-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
+             <div className="mb-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
                <div className="min-w-0 flex-1 w-full sm:w-auto">
-                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Generierte Datei</p>
-                 <p className="text-sm font-mono font-medium text-slate-800 truncate" title={mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${context.lastName || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${context.lastName || "Fateh"}.pdf`}>
+                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Generierte Datei</p>
+                 <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate" title={mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}>
                    {mode === "cover-letter" 
-                     ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${context.lastName || "Fateh"}.pdf` 
-                     : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${context.lastName || "Fateh"}.pdf`}
+                     ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` 
+                     : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
                  </p>
                </div>
                <div className="flex gap-2 w-full sm:w-auto shrink-0">
@@ -594,34 +621,34 @@ export default function ApplyPage() {
                            animate={{ opacity: 1, y: 0, scale: 1 }}
                            exit={{ opacity: 0, y: 8, scale: 0.97 }}
                            transition={{ duration: 0.15 }}
-                           className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 min-w-[360px]"
+                           className="absolute right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 w-[min(360px,calc(100vw-2rem))]"
                          >
                            <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-                             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Geplanter Versand</span>
-                             <button onClick={() => setShowScheduleMenu(false)} className="text-slate-400 hover:text-slate-600 p-0.5">
+                             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Geplanter Versand</span>
+                             <button onClick={() => setShowScheduleMenu(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
                                <X className="w-3.5 h-3.5" />
                              </button>
                            </div>
-                           <div className="text-[10px] text-slate-400 px-4 pb-2">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
+                           <div className="text-[10px] text-slate-400 dark:text-slate-500 px-4 pb-2">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
                            <div className="divide-y divide-slate-50">
                              {getScheduleOptions().map((opt) => (
                                <button
                                  key={opt.label}
                                  onClick={() => handleScheduleSend(opt.date)}
-                                 className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4"
+                                 className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between gap-4"
                                >
-                                 <span className="text-sm font-medium text-slate-700">{opt.label}</span>
-                                 <span className="text-xs text-slate-400 shrink-0">{opt.detail}</span>
+                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{opt.label}</span>
+                                 <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{opt.detail}</span>
                                </button>
                              ))}
                            </div>
-                           <div className="border-t border-slate-100 p-2">
+                           <div className="border-t border-slate-100 dark:border-slate-800 p-2">
                              {!showCustomDatePicker ? (
                                <button
                                  onClick={() => setShowCustomDatePicker(true)}
-                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
                                >
-                                 <Calendar className="w-4 h-4 text-slate-400" /> Datum &amp; Uhrzeit wählen
+                                 <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" /> Datum &amp; Uhrzeit wählen
                                </button>
                              ) : (
                                <div className="p-2 space-y-2">
@@ -630,13 +657,13 @@ export default function ApplyPage() {
                                    value={customScheduleDate}
                                    onChange={e => setCustomScheduleDate(e.target.value)}
                                    min={new Date().toISOString().split("T")[0]}
-                                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                                   className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                                  />
                                  <input
                                    type="time"
                                    value={customScheduleTime}
                                    onChange={e => setCustomScheduleTime(e.target.value)}
-                                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                                   className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                                  />
                                  <button
                                    onClick={() => {
@@ -663,7 +690,7 @@ export default function ApplyPage() {
 
                  <button 
                    onClick={handleReset}
-                   className="flex-1 sm:flex-initial bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 active:scale-95"
+                   className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
                  >
                    Neu
                  </button>
@@ -671,7 +698,7 @@ export default function ApplyPage() {
              </div>
            )}
 
-           <div className="bg-slate-200 rounded-2xl border border-slate-300 flex flex-col flex-1 h-full min-h-[500px] lg:min-h-0 overflow-hidden relative w-full mx-auto">
+           <div className="bg-slate-200 dark:bg-slate-700 rounded-2xl border border-slate-300 dark:border-slate-600 flex flex-col flex-1 h-full min-h-[500px] lg:min-h-0 overflow-hidden relative w-full mx-auto">
              
              {showPreview && pdfUrl ? (
                <div className="absolute inset-0 w-full h-full rounded-2xl overflow-hidden">
@@ -687,7 +714,7 @@ export default function ApplyPage() {
                </div>
              ) : (
                <div className="flex-1 flex items-center justify-center">
-                 <h2 className="text-4xl font-bold text-slate-400 opacity-50">PDF-Vorschau</h2>
+                 <h2 className="text-4xl font-bold text-slate-400 dark:text-slate-500 opacity-50">PDF-Vorschau</h2>
                </div>
              )}
 

@@ -24,7 +24,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-md max-w-sm ${
+      className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-md sm:max-w-sm ${
         isSuccess
           ? "bg-emerald-50/90 border-emerald-200 text-emerald-800"
           : "bg-red-50/90 border-red-200 text-red-800"

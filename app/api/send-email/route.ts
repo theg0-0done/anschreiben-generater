@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getOAuth2Client, getTokensFromCookies, buildRawEmail, encryptTokens, buildTokenCookie } from "../../../lib/gmail";
+import { getOAuth2ClientForUser, saveGmailCredentialsForUser, buildRawEmail } from "@/lib/gmail";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const tokens = await getTokensFromCookies();
-    if (!tokens) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+
+    const credentials = await getOAuth2ClientForUser(user.id);
+    if (!credentials) {
       return NextResponse.json(
-        { error: "Nicht mit Gmail verbunden. Bitte zuerst authentifizieren." },
+        { error: "Nicht mit Gmail verbunden. Bitte erneut anmelden." },
         { status: 401 }
       );
     }
+    const { oauth2Client, tokens } = credentials;
 
     const { to, subject, body, pdfBase64, fileName } = await request.json();
 
@@ -21,10 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const oauth2Client = getOAuth2Client();
-    oauth2Client.setCredentials(tokens as any);
-
-    // Listen for token refresh events to update the cookie
+    // Listen for token refresh events to persist the new access token
     let refreshedTokens: any = null;
     oauth2Client.on("tokens", (newTokens) => {
       refreshedTokens = { ...(tokens as any), ...newTokens };
@@ -39,22 +44,23 @@ export async function POST(request: NextRequest) {
       requestBody: { raw },
     });
 
-    const response = NextResponse.json({ success: true });
-
-    // If tokens were refreshed during the request, update the cookie
+    // If tokens were refreshed during the request, persist them
     if (refreshedTokens) {
-      const encrypted = encryptTokens(refreshedTokens);
-      response.headers.set("Set-Cookie", buildTokenCookie(encrypted));
+      await saveGmailCredentialsForUser(user.id, refreshedTokens);
     }
 
-    return response;
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("Send email error:", error);
 
     // If the error is an auth error, suggest re-authentication
-    if (error?.code === 401 || error?.response?.status === 401) {
+    const isAuthError =
+      error?.code === 401 ||
+      error?.response?.status === 401 ||
+      error?.response?.data?.error === "invalid_grant";
+    if (isAuthError) {
       return NextResponse.json(
-        { error: "Gmail-Authentifizierung abgelaufen. Bitte erneut verbinden." },
+        { error: "Gmail-Zugriff ist abgelaufen oder wurde widerrufen. Bitte melde dich ab und erneut mit Google an." },
         { status: 401 }
       );
     }

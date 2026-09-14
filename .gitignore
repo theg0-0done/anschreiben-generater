@@ -23,3 +23,7 @@ data/
 *.tsbuildinfo
 
 .env*
+
+# local tooling / stray backups
+.claude/
+anschreiben-generater/

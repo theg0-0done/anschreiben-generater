@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import crypto from "crypto";
 import { cookies } from "next/headers";
+import { supabase as supabaseAdmin } from "@/lib/supabase";
 
 // ─── OAuth2 Client ──────────────────────────────────────────────────────────
 
@@ -10,6 +11,35 @@ export function getOAuth2Client() {
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
+}
+
+// ─── Per-user Gmail credentials (Supabase-login-based, replaces the cookie) ──
+
+/** Builds an OAuth2 client authenticated as the given user's connected Gmail account. */
+export async function getOAuth2ClientForUser(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("gmail_credentials")
+    .select("encrypted_tokens")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const tokens = decryptTokens(data.encrypted_tokens);
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials(tokens as any);
+  return { oauth2Client, tokens };
+}
+
+/** Persists refreshed tokens back to gmail_credentials, merging with what's already stored. */
+export async function saveGmailCredentialsForUser(
+  userId: string,
+  tokens: object
+): Promise<void> {
+  await supabaseAdmin
+    .from("gmail_credentials")
+    .update({ encrypted_tokens: encryptTokens(tokens), updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
 }
 
 // ─── Token Encryption (AES-256-GCM) ────────────────────────────────────────

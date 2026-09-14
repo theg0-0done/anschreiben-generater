@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokensFromCookies } from "@/lib/gmail";
+import { createClient } from "@/lib/supabase/server";
 import {
   getAllScheduledEmails,
   saveScheduledEmail,
@@ -9,22 +9,30 @@ import {
 } from "@/lib/scheduled-emails";
 
 export async function POST(request: NextRequest) {
+  const t0 = performance.now();
   try {
-    const tokens = await getTokensFromCookies();
-    if (!tokens) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const t1 = performance.now();
+    console.log(`[schedule POST] auth check: ${(t1 - t0).toFixed(0)}ms`);
+    if (!user) {
+      return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+
+    const { to, subject, body, pdfStoragePath, fileName, scheduledAt, metadata } = await request.json();
+
+    if (!to || !subject || !body || !pdfStoragePath || !fileName || !scheduledAt) {
       return NextResponse.json(
-        { error: "Nicht mit Gmail verbunden. Bitte zuerst authentifizieren." },
-        { status: 401 }
+        { error: "Fehlende Felder: to, subject, body, pdfStoragePath, fileName und scheduledAt erforderlich." },
+        { status: 400 }
       );
     }
 
-    const { to, subject, body, pdfBase64, fileName, scheduledAt, metadata } = await request.json();
-
-    if (!to || !subject || !body || !pdfBase64 || !fileName || !scheduledAt) {
-      return NextResponse.json(
-        { error: "Fehlende Felder: to, subject, body, pdfBase64, fileName und scheduledAt erforderlich." },
-        { status: 400 }
-      );
+    // The client uploads directly to Storage under its own user_id folder —
+    // reject anything that doesn't match, so nobody can point at someone
+    // else's (or an arbitrary) storage path.
+    if (typeof pdfStoragePath !== "string" || !pdfStoragePath.startsWith(`${user.id}/`)) {
+      return NextResponse.json({ error: "Ungültiger Dateipfad." }, { status: 400 });
     }
 
     const scheduledDate = new Date(scheduledAt);
@@ -42,17 +50,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // saveScheduledEmail is async (uploads PDF to Supabase Storage)
+    const t2 = performance.now();
     const item = await saveScheduledEmail({
+      userId: user.id,
+      contextId: metadata?.contextId ?? null,
       to,
       subject,
       body,
-      pdfBase64,
+      pdfStoragePath,
       fileName,
       scheduledAt: scheduledDate.toISOString(),
-      tokens,
       metadata,
     });
+    const t3 = performance.now();
+    console.log(`[schedule POST] validation: ${(t2 - t1).toFixed(0)}ms, db insert: ${(t3 - t2).toFixed(0)}ms, total: ${(t3 - t0).toFixed(0)}ms`);
 
     return NextResponse.json({ success: true, item });
   } catch (error: any) {
@@ -66,13 +77,18 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const isPdf = searchParams.get("pdf") === "true";
 
-    // If requesting PDF preview
     if (id && isPdf) {
-      const pdfData = await getScheduledEmailPdf(id);
+      const pdfData = await getScheduledEmailPdf(id, user.id);
       if (!pdfData) {
         return new NextResponse("PDF nicht gefunden", { status: 404 });
       }
@@ -85,7 +101,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const list = await getAllScheduledEmails();
+    const list = await getAllScheduledEmails(user.id);
     return NextResponse.json({ scheduled: list });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Fehler beim Abrufen" }, { status: 500 });
@@ -94,6 +110,12 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+
     const { id, scheduledAt } = await request.json();
     if (!id || !scheduledAt) {
       return NextResponse.json({ error: "ID und scheduledAt sind erforderlich." }, { status: 400 });
@@ -111,7 +133,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const success = await rescheduleScheduledEmail(id, newDate.toISOString());
+    const success = await rescheduleScheduledEmail(id, user.id, newDate.toISOString());
     if (!success) {
       return NextResponse.json({ error: "Konnte geplante E-Mail nicht verschieben." }, { status: 500 });
     }
@@ -124,6 +146,12 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const permanent = searchParams.get("permanent") === "true";
@@ -132,10 +160,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "ID erforderlich" }, { status: 400 });
     }
 
-    const result = await deleteScheduledEmail(id, permanent);
+    const result = await deleteScheduledEmail(id, user.id, permanent);
     return NextResponse.json({ success: result });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Fehler beim Löschen/Abbrechen" }, { status: 500 });
   }
 }
-

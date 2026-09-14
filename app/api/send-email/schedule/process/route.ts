@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processDueEmails } from "@/lib/scheduled-emails";
-import { getTokensFromCookies } from "@/lib/gmail";
 
 function isAuthorized(request: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -22,7 +21,9 @@ function isAuthorized(request: NextRequest): boolean {
     request.nextUrl.searchParams.get("cron_secret");
   if (cronSecret && querySecret === cronSecret) return true;
 
-  // 4. Local dev mode fallback (allow localhost testing)
+  // 4. Local dev mode fallback (allow localhost testing — Vercel Cron only
+  // runs in production, so this is also what lets the app self-trigger
+  // processing while developing)
   if (process.env.NODE_ENV !== "production") {
     return true;
   }
@@ -31,13 +32,8 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 export async function POST(request: NextRequest) {
-  const authorized = isAuthorized(request);
-  if (!authorized) {
-    // Check if user has an active Gmail session in cookies
-    const tokens = await getTokensFromCookies();
-    if (!tokens) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -56,4 +52,3 @@ export async function GET(request: NextRequest) {
   // Allow GET so external services or browser calls can trigger processing
   return POST(request);
 }
-

@@ -1,31 +1,23 @@
 import { NextResponse } from "next/server";
-import { getTokensFromCookies, getOAuth2Client, encryptTokens, buildTokenCookie } from "../../../../lib/gmail";
+import { createClient } from "@/lib/supabase/server";
+import { supabase as supabaseAdmin } from "@/lib/supabase";
 
 export async function GET() {
-  const tokens = (await getTokensFromCookies()) as any;
-  if (!tokens) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ authenticated: false, email: null });
   }
 
-  let email = tokens.email || null;
+  const { data } = await supabaseAdmin
+    .from("gmail_credentials")
+    .select("google_email")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-  // If email was not stored in existing cookie, try resolving via access token
-  if (!email && tokens.access_token) {
-    try {
-      const oauth2Client = getOAuth2Client();
-      oauth2Client.setCredentials(tokens);
-      const tokenInfo = await oauth2Client.getTokenInfo(tokens.access_token);
-      if (tokenInfo.email) {
-        email = tokenInfo.email;
-        tokens.email = email;
-        const res = NextResponse.json({ authenticated: true, email });
-        res.headers.set("Set-Cookie", buildTokenCookie(encryptTokens(tokens)));
-        return res;
-      }
-    } catch {
-      // Ignored if token expired or lacks scope
-    }
+  if (!data) {
+    return NextResponse.json({ authenticated: false, email: null });
   }
 
-  return NextResponse.json({ authenticated: true, email });
+  return NextResponse.json({ authenticated: true, email: data.google_email });
 }

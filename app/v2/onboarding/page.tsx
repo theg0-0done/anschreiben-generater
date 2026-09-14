@@ -4,15 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle, UploadCloud, ChevronRight, File as FileIcon } from "lucide-react";
-import { 
-  savePDF, 
-  getContexts, 
-  saveContexts, 
-  setActiveContextId, 
-  markAsOnboarded, 
-  getPDFAsBase64,
-  AusbildungContext
-} from "../../../lib/storage";
+import {
+  createContext,
+  saveContext,
+  saveProfile,
+  uploadJobDocument,
+  fileToBase64,
+  setActiveContextId,
+} from "@/lib/data";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -92,38 +91,21 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const contextId = `context_${Date.now()}`;
-      const resumeId = `resume_${contextId}`;
-      const cvId = `cv_${contextId}`;
+      // 1. Save shared personal info onto the user's profile
+      await saveProfile({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        street_house: streetHouse,
+        postal_city: postalCity,
+        personal_links: personalLinks,
+      });
 
-      // 1. Upload full resume to our server route, which forwards to Vercel Blob
-      let resumeBlobUrl: string | undefined;
-      if (resume) {
-        const formData = new FormData();
-        formData.append("file", resume);
-        formData.append("contextId", contextId);
+      // 2. Get Base64 of the CV directly from the in-memory file, for the AI call
+      const cvBase64 = cv ? await fileToBase64(cv) : null;
 
-        const uploadRes = await fetch("/api/upload-resume", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadRes.ok) {
-          const errorData = await uploadRes.json();
-          throw new Error(errorData.error || "Failed to upload resume");
-        }
-
-        const data = await uploadRes.json();
-        resumeBlobUrl = data.url;
-      }
-
-      // 2. Save CV to IndexedDB (used locally for AI pitch generation)
-      if (cv) await savePDF(cvId, cv);
-
-      // 3. Get Base64 of CV for AI
-      const cvBase64 = await getPDFAsBase64(cvId);
-
-      // 4. Generate AI Template from CV
+      // 3. Generate AI cover-letter template from the CV
       const res = await fetch("/api/generate-pitch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,36 +125,28 @@ export default function OnboardingPage() {
       }
 
       const { template, fallbackHook } = await res.json();
-      
-      // 5. Create and save new Ausbildung Context
-      const newContext: AusbildungContext = {
-        id: contextId,
-        jobTitle,
-        firstName,
-        lastName,
-        email,
-        phone,
-        streetHouse,
-        postalCity,
-        personalLinks,
-        cvId,
-        resumeId,
-        coverLetterTemplate: template,
-        coverLetterPageNumber,
-        fallbackHook: fallbackHook || "",
-        cvFileName: cv?.name,
-        resumeFileName: resume?.name,
-        hasCustomResume: !!resume,
-        resumeBlobUrl,
-      };
 
-      const existingContexts = getContexts();
-      saveContexts([...existingContexts, newContext]);
-      setActiveContextId(contextId);
+      // 4. Create the job-title context (owned by the signed-in user via RLS)
+      const newContext = await createContext({
+        job_title: jobTitle,
+        cover_letter_template: template,
+        cover_letter_page_number: coverLetterPageNumber,
+        fallback_hook: fallbackHook || "",
+        cv_file_name: cv?.name ?? null,
+        resume_file_name: resume?.name ?? null,
+      });
 
-      // 5. Mark as Onboarded
-      await markAsOnboarded();
+      // 5. Upload the PDFs to Supabase Storage under this context, then record their paths
+      const [cvPath, resumePath] = await Promise.all([
+        cv ? uploadJobDocument(newContext.id, "cv", cv) : Promise.resolve(null),
+        resume ? uploadJobDocument(newContext.id, "resume", resume) : Promise.resolve(null),
+      ]);
+      await saveContext(newContext.id, {
+        cv_storage_path: cvPath,
+        resume_storage_path: resumePath,
+      });
 
+      setActiveContextId(newContext.id);
       router.push("/v2/apply");
 
     } catch (err: any) {

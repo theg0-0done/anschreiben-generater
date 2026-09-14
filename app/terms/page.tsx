@@ -1,9 +1,10 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { FileText, ArrowLeft, Shield, AlertCircle, Mail, Scale } from "lucide-react";
+import { Logo } from "@/app/components/Logo";
 
 export const metadata = {
-  title: "Nutzungsbedingungen – Anschreibify",
-  description: "Nutzungsbedingungen fuer die Anschreibify-Plattform.",
+  title: "Nutzungsbedingungen � Bewerbify",
+  description: "Nutzungsbedingungen fuer die Bewerbify-Plattform.",
 };
 
 export default function TermsPage() {
@@ -19,9 +20,7 @@ export default function TermsPage() {
             <ArrowLeft className="w-4 h-4" />
             Zurueck zur App
           </Link>
-          <span className="font-modak text-2xl text-slate-800 tracking-wide select-none leading-none">
-            Anschreibify
-          </span>
+          <Logo className="text-2xl" />
         </div>
       </header>
 
@@ -51,7 +50,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-slate-900">1. Akzeptanz der Bedingungen</h2>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Durch die Nutzung von <strong>Anschreibify</strong> erklaeren Sie sich mit diesen Nutzungsbedingungen einverstanden.
+                Durch die Nutzung von <strong>Bewerbify</strong> erklaeren Sie sich mit diesen Nutzungsbedingungen einverstanden.
                 Wenn Sie diesen Bedingungen nicht zustimmen, duerfen Sie die Plattform nicht nutzen.
                 Diese Bedingungen gelten fuer alle Nutzer, Besucher und Personen, die auf den Dienst zugreifen.
               </p>
@@ -65,7 +64,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-slate-900">2. Beschreibung des Dienstes</h2>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Anschreibify ist ein KI-gestuetzter Generator fuer Bewerbungsanschreiben. Die Plattform ermoeglicht es Nutzern:
+                Bewerbify ist ein KI-gestuetzter Generator fuer Bewerbungsanschreiben. Die Plattform ermoeglicht es Nutzern:
               </p>
               <ul className="mt-3 space-y-2 text-slate-600">
                 {[
@@ -114,7 +113,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-slate-900">4. KI-generierte Inhalte</h2>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Die von Anschreibify generierten Anschreiben werden mithilfe von KI-Modellen erstellt. Wir uebernehmen
+                Die von Bewerbify generierten Anschreiben werden mithilfe von KI-Modellen erstellt. Wir uebernehmen
                 keine Garantie fuer die Richtigkeit, Vollstaendigkeit oder Eignung der generierten Inhalte. Es liegt
                 in der Verantwortung des Nutzers, alle generierten Inhalte vor dem Versand zu pruefen und anzupassen.
               </p>
@@ -128,7 +127,7 @@ export default function TermsPage() {
                 <h2 className="text-xl font-semibold text-slate-900">5. Haftungsausschluss</h2>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                Anschreibify wird ohne jede Gewaehrleistung bereitgestellt. Wir uebernehmen keine Haftung fuer:
+                Bewerbify wird ohne jede Gewaehrleistung bereitgestellt. Wir uebernehmen keine Haftung fuer:
               </p>
               <ul className="mt-3 space-y-2 text-slate-600">
                 {[

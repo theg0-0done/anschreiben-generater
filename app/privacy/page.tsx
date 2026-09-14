@@ -1,9 +1,10 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowLeft, Shield, Lock, Database, Mail, Eye, UserCheck } from "lucide-react";
+import { Logo } from "@/app/components/Logo";
 
 export const metadata = {
-  title: "Datenschutzerklaerung - Anschreibify",
-  description: "Datenschutzerklaerung fuer die Anschreibify-Plattform.",
+  title: "Datenschutzerklaerung - Bewerbify",
+  description: "Datenschutzerklaerung fuer die Bewerbify-Plattform.",
 };
 
 export default function PrivacyPage() {
@@ -19,9 +20,7 @@ export default function PrivacyPage() {
             <ArrowLeft className="w-4 h-4" />
             Zurueck zur App
           </Link>
-          <span className="font-modak text-2xl text-slate-800 tracking-wide select-none leading-none">
-            Anschreibify
-          </span>
+          <Logo className="text-2xl" />
         </div>
       </header>
 
@@ -45,7 +44,7 @@ export default function PrivacyPage() {
             <Lock className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-sm text-emerald-800 leading-relaxed">
-            Ihre Privatsphaere ist uns wichtig. Diese Erklaerung beschreibt, wie Anschreibify Ihre Daten erhebt,
+            Ihre Privatsphaere ist uns wichtig. Diese Erklaerung beschreibt, wie Bewerbify Ihre Daten erhebt,
             verwendet und schuetzt. Wir verkaufen Ihre Daten niemals an Dritte.
           </p>
         </div>
@@ -145,8 +144,8 @@ export default function PrivacyPage() {
               </p>
               <ul className="space-y-2 text-slate-600">
                 {[
-                  "Dienstleister (z.B. Vercel fuer Hosting, Supabase fuer Datenbank) – nur im notwendigen Umfang",
-                  "Anthropic Claude / KI-API – nur der Anschreiben-Kontext ohne persoenliche Identifikatoren",
+                  "Dienstleister (z.B. Vercel fuer Hosting, Supabase fuer Datenbank) � nur im notwendigen Umfang",
+                  "Anthropic Claude / KI-API � nur der Anschreiben-Kontext ohne persoenliche Identifikatoren",
                   "Gesetzliche Verpflichtungen oder behoerdliche Anordnungen",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
