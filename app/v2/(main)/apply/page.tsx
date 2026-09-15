@@ -5,7 +5,7 @@ import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, J
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
 import { Toast } from "@/app/components/Toast";
 import { LoadingState } from "@/app/components/LoadingState";
-import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar } from "lucide-react";
+import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ApplyPage() {
@@ -36,6 +36,8 @@ export default function ApplyPage() {
   const [customScheduleDate, setCustomScheduleDate] = useState("");
   const [customScheduleTime, setCustomScheduleTime] = useState("08:00");
   const scheduleMenuRef = useRef<HTMLDivElement>(null);
+  const previewSectionRef = useRef<HTMLDivElement>(null);
+  const didMountRef = useRef(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Load context and restored state
@@ -70,6 +72,18 @@ export default function ApplyPage() {
       .then(data => setGmailConnected(data.authenticated))
       .catch(() => setGmailConnected(false));
     setIsLoaded(true);
+  }, []);
+
+  // Close the schedule dropdown when clicking outside of it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (scheduleMenuRef.current && !scheduleMenuRef.current.contains(event.target as Node)) {
+        setShowScheduleMenu(false);
+        setShowCustomDatePicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Save state on change
@@ -255,6 +269,20 @@ export default function ApplyPage() {
       generatePdf(hook, mode);
     }
   }, [mode]);
+
+  // Smoothly scroll to the preview once a (new or updated) PDF is ready —
+  // most useful on mobile, where the form and preview stack vertically.
+  // Skip the very first run so restoring a saved pdfUrl from sessionStorage
+  // on mount doesn't yank the page down before the user's done anything.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    if (pdfUrl) {
+      previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [pdfUrl]);
 
   const handleDownload = () => {
     if (!pdfUrl) return;
@@ -457,85 +485,118 @@ export default function ApplyPage() {
         
         {/* Left Form Panel */}
         <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-8 lg:pb-0">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 flex flex-col shrink-0 min-h-full">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6 shrink-0">Unternehmensinfos:</h2>
-
-            <div className="space-y-4 flex flex-col flex-1">
-              <div>
-                <input 
-                  type="text" 
-                  placeholder="Unternehmensname"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 md:p-8 flex flex-col shrink-0 min-h-full">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6 shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" />
               </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Unternehmensinfos</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Angaben zur Zielposition für Ihre Bewerbung</p>
+              </div>
+            </div>
 
-              <div className="flex gap-2 sm:gap-4">
-                <div className="relative w-1/3">
-                  <select
-                    value={contactSalutation}
-                    onChange={(e) => setContactSalutation(e.target.value)}
-                    className="w-full h-full pl-3 pr-7 sm:px-4 sm:pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 appearance-none"
-                  >
-                    <option value=""></option>
-                    <option value="Herr">Herr</option>
-                    <option value="Frau">Frau</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+            <div className="space-y-5 flex flex-col flex-1">
+              {/* Section: Unternehmen */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Unternehmen</p>
+                <div className="relative">
+                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Unternehmensname"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Ansprechpartner (Nachname)"
-                  value={contactPerson}
-                  onChange={(e) => setContactPerson(e.target.value)}
-                  className="w-2/3 px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+
+                <div className="flex gap-2 sm:gap-3">
+                  <div className="relative w-1/3">
+                    <select
+                      value={contactSalutation}
+                      onChange={(e) => setContactSalutation(e.target.value)}
+                      className="w-full h-full pl-3 pr-7 sm:px-4 sm:pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 appearance-none"
+                    >
+                      <option value=""></option>
+                      <option value="Herr">Herr</option>
+                      <option value="Frau">Frau</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                  </div>
+                  <div className="relative w-2/3">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Ansprechpartner (Nachname)"
+                      value={contactPerson}
+                      onChange={(e) => setContactPerson(e.target.value)}
+                      className="w-full pl-10 pr-3 sm:pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                <input
-                  type="text"
-                  placeholder="Straße & Hausnr."
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-                <input
-                  type="text"
-                  placeholder="PLZ & Stadt"
-                  value={postalCity}
-                  onChange={(e) => setPostalCity(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+              {/* Section: Adresse */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Adresse</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="relative">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Straße & Hausnr."
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="PLZ & Stadt"
+                    value={postalCity}
+                    onChange={(e) => setPostalCity(e.target.value)}
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <input 
-                  type="email" 
-                  placeholder="E-Mail des Unternehmens"
-                  value={companyEmail}
-                  onChange={(e) => setCompanyEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+              {/* Section: Kontakt */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Kontakt</p>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                  <input
+                    type="email"
+                    placeholder="E-Mail des Unternehmens"
+                    value={companyEmail}
+                    onChange={(e) => setCompanyEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
               </div>
 
-              <div className="flex-1 flex flex-col relative">
-                <textarea 
-                  rows={6}
-                  placeholder="Unternehmensinfos (z.B. aus der Stellenanzeige kopieren)"
-                  value={companyInfo}
-                  onChange={(e) => {
-                    const text = e.target.value;
-                    const words = text.trim().split(/\s+/).filter(Boolean);
-                    if (words.length <= 400 || text.length < companyInfo.length) {
-                      setCompanyInfo(text);
-                    }
-                  }}
-                  className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[150px] pb-8"
-                />
-                <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400 dark:text-slate-500">
-                  {companyInfo.trim().split(/\s+/).filter(Boolean).length} / 400 Wörter
+              {/* Section: Stellenbeschreibung */}
+              <div className="flex-1 flex flex-col space-y-3">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Stellenbeschreibung</p>
+                <div className="flex-1 flex flex-col relative">
+                  <textarea
+                    rows={6}
+                    placeholder="Unternehmensinfos (z.B. aus der Stellenanzeige kopieren)"
+                    value={companyInfo}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      const words = text.trim().split(/\s+/).filter(Boolean);
+                      if (words.length <= 400 || text.length < companyInfo.length) {
+                        setCompanyInfo(text);
+                      }
+                    }}
+                    className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[150px] pb-8"
+                  />
+                  <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400 dark:text-slate-500">
+                    {companyInfo.trim().split(/\s+/).filter(Boolean).length} / 400 Wörter
+                  </div>
                 </div>
               </div>
             </div>
@@ -569,7 +630,7 @@ export default function ApplyPage() {
         </div>
 
         {/* Right Preview Panel */}
-        <div className="lg:col-span-1 flex flex-col h-full pb-8 lg:pb-0">
+        <div ref={previewSectionRef} className="lg:col-span-1 flex flex-col h-full pb-8 lg:pb-0">
            {showPreview && (
              <div className="mb-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
                <div className="min-w-0 flex-1 w-full sm:w-auto">

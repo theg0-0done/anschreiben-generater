@@ -13,9 +13,7 @@ import {
   FileText,
   MapPin,
   ExternalLink,
-  ChevronRight,
   X,
-  Building2,
   User,
   Calendar,
   Eye,
@@ -54,8 +52,6 @@ export default function ScheduledEmailsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "sent" | "cancelled">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Modals state
   const [rescheduleItem, setRescheduleItem] = useState<ScheduledItem | null>(null);
@@ -67,6 +63,7 @@ export default function ScheduledEmailsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [previewItem, setPreviewItem] = useState<ScheduledItem | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -106,20 +103,6 @@ export default function ScheduledEmailsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Close search dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
-      ) {
-        setIsSearchFocused(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Scope to the currently active Ausbildung context. Emails scheduled before this
   // field existed have no contextId, so they're matched by jobTitle as a fallback.
   const contextItems = useMemo(() => {
@@ -148,16 +131,6 @@ export default function ScheduledEmailsPage() {
       return true;
     });
   }, [contextItems, statusFilter, searchQuery]);
-
-  // Instant matches for the search dropdown window
-  const companyMatches = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    return contextItems.filter((item) => {
-      const company = (item.metadata?.companyName || "").toLowerCase();
-      return company.includes(q);
-    });
-  }, [contextItems, searchQuery]);
 
   // Counts
   const counts = useMemo(() => {
@@ -321,7 +294,9 @@ export default function ScheduledEmailsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#f8fafc] dark:bg-slate-950">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
 
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Top Header & Search Bar */}
@@ -337,99 +312,29 @@ export default function ScheduledEmailsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative w-full sm:w-80" ref={searchContainerRef}>
+            <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 z-10" />
               <input
                 type="text"
                 value={searchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsSearchFocused(true);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Unternehmen suchen..."
                 className="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setIsSearchFocused(false);
-                  }}
+                  onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 z-10"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
-
-              {/* Instant Search Dropdown Window */}
-              <AnimatePresence>
-                {isSearchFocused && searchQuery.trim().length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden z-50 max-h-80 flex flex-col"
-                  >
-                    <div className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      <span>Ergebnisse ({companyMatches.length})</span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Klicken für Details</span>
-                    </div>
-
-                    <div className="overflow-y-auto p-1.5 divide-y divide-slate-50">
-                      {companyMatches.length === 0 ? (
-                        <div className="p-6 text-center space-y-1.5">
-                          <Building2 className="w-6 h-6 text-slate-300 mx-auto" />
-                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Kein Unternehmen gefunden</p>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                            Keine Treffer für &ldquo;<span className="text-slate-600 dark:text-slate-300 font-medium">{searchQuery}</span>&rdquo;
-                          </p>
-                        </div>
-                      ) : (
-                        companyMatches.map((match) => {
-                          const company = match.metadata?.companyName || "Unternehmen";
-                          const initial = company.charAt(0).toUpperCase() || "U";
-                          return (
-                            <div
-                              key={match.id}
-                              onClick={() => {
-                                setPreviewItem(match);
-                                setIsSearchFocused(false);
-                              }}
-                              className="p-2.5 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                                  {initial}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 truncate">
-                                    {company}
-                                  </p>
-                                  <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-                                    {match.metadata?.jobTitle || match.subject}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="shrink-0 flex items-center gap-2">
-                                {renderStatus(match.status)}
-                                <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" />
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </div>
 
         {/* Filter Tabs (Screenshot inspired) */}
-        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-slate-200 dark:border-slate-700 pb-1.5 sm:pb-2 overflow-x-auto no-scrollbar">
           {[
             { id: "all", label: "Alle Mails", count: counts.all },
             { id: "pending", label: "Geplant", count: counts.pending },
@@ -441,7 +346,7 @@ export default function ScheduledEmailsPage() {
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id as any)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`shrink-0 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
                   isActive
                     ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-700 font-semibold"
                     : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white/60 dark:hover:bg-slate-800/60"
@@ -449,7 +354,7 @@ export default function ScheduledEmailsPage() {
               >
                 {tab.label}
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
+                  className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full ${
                     isActive ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                   }`}
                 >
@@ -460,8 +365,8 @@ export default function ScheduledEmailsPage() {
           })}
         </div>
 
-        {/* Main Structured Table (inspired by attached screenshot) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        {/* Main Structured Table (inspired by attached screenshot) — desktop/tablet only */}
+        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -635,16 +540,169 @@ export default function ScheduledEmailsPage() {
             </table>
           </div>
         </div>
+
+        {/* Mobile Card List — small screens only */}
+        <div className="md:hidden space-y-3">
+          {loading ? (
+            <div className="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
+              Lade geplante E-Mails...
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="max-w-sm mx-auto space-y-2 px-4">
+                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500 mb-3">
+                  <CalendarClock className="w-6 h-6" />
+                </div>
+                <p className="font-semibold text-slate-700 dark:text-slate-200">Keine E-Mails gefunden</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {searchQuery
+                    ? "Keine E-Mails entsprechen Ihrer Suchanfrage."
+                    : "Sie haben aktuell keine E-Mails in diesem Status geplant."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            filteredItems.map((item) => {
+              const isOverdueOrFailed = item.status === "failed";
+              const company = item.metadata?.companyName || "Unternehmen";
+              const contact = item.metadata?.contactPerson || "Personalabteilung";
+              const initial = company.charAt(0).toUpperCase() || "U";
+              const relativeTime = getRelativeTime(item.scheduled_at, item.status);
+              const isExpanded = expandedCardId === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+                    isOverdueOrFailed
+                      ? "bg-rose-50/40 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900"
+                      : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedCardId(isExpanded ? null : item.id)}
+                    className="w-full flex items-center justify-between gap-3 p-4 text-left"
+                  >
+                    {/* Left: avatar + company + contact */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                        {initial}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 dark:text-slate-50 truncate">{company}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{contact}</p>
+                      </div>
+                    </div>
+
+                    {/* Right: status + time */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {renderStatus(item.status)}
+                      <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                        <Calendar className="w-3 h-3" />
+                        {formatDateTime(item.scheduled_at)}
+                      </div>
+                      {relativeTime && (
+                        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
+                          {relativeTime}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                          {/* E-Mail */}
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs pt-3">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            <a
+                              href={`mailto:${item.to_email}`}
+                              className="truncate hover:text-blue-600 transition-colors font-mono"
+                            >
+                              {item.to_email}
+                            </a>
+                          </div>
+
+                          {/* Attachments */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {item.metadata?.attachments && item.metadata.attachments.length > 0 ? (
+                              item.metadata.attachments.map((att, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700"
+                                >
+                                  <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                                  <span className="truncate max-w-[140px]">{att}</span>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700">
+                                <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                                {item.file_name}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              onClick={() => setPreviewItem(item)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-950/70 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              Details
+                            </button>
+
+                            {item.status === "pending" && (
+                              <button
+                                onClick={() => handleOpenReschedule(item)}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 rounded-xl hover:bg-cyan-100 dark:hover:bg-cyan-950/70 transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                Verschieben
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setDeleteItem(item)}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/70 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              {item.status === "pending" ? "Abbrechen" : "Löschen"}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* ─── RESCHEDULE MODAL ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {rescheduleItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setRescheduleItem(null)}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
             >
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -754,11 +812,15 @@ export default function ScheduledEmailsPage() {
       {/* ─── CANCEL / DELETE MODAL ─────────────────────────────────────────── */}
       <AnimatePresence>
         {deleteItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setDeleteItem(null)}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
             >
               <div className="p-6 text-center space-y-3">
@@ -808,73 +870,60 @@ export default function ScheduledEmailsPage() {
       {/* ─── DETAILS & PDF PREVIEW SLIDE-OVER DRAWER ────────────────────────── */}
       <AnimatePresence>
         {previewItem && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setPreviewItem(null)}
+          >
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-900 w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden"
             >
               {/* Drawer Header */}
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                     {previewItem.metadata?.companyName?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 dark:text-slate-50 text-lg">
+                  <div className="min-w-0">
+                    <h2 className="font-bold text-slate-900 dark:text-slate-50 text-lg truncate">
                       {previewItem.metadata?.companyName || "Unternehmen"}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Empfänger: {previewItem.to_email}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      {previewItem.metadata?.location || "Deutschland"}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setPreviewItem(null)}
-                  className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {renderStatus(previewItem.status)}
+                  <button
+                    onClick={() => setPreviewItem(null)}
+                    className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Drawer Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-                {/* Meta details cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                      Status
-                    </span>
-                    <div>{renderStatus(previewItem.status)}</div>
+                {/* Meta details — flat icon rows, no card boxes */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+                    <User className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
+                    {previewItem.metadata?.contactPerson || "Personalabteilung"}
                   </div>
-
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                      Geplanter Versand
-                    </span>
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      {formatDateTime(previewItem.scheduled_at)}
-                    </span>
+                  <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+                    <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
+                    An {previewItem.to_email}
                   </div>
-
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                      Ansprechpartner
-                    </span>
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                      {previewItem.metadata?.contactPerson || "Personalabteilung"}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                      Standort
-                    </span>
-                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                      {previewItem.metadata?.location || "Deutschland"}
-                    </span>
+                  <div className="flex items-center gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+                    <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
+                    Am {formatDateTime(previewItem.scheduled_at)}
                   </div>
                 </div>
 

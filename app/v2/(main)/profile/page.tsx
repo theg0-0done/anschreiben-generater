@@ -8,10 +8,21 @@ import {
   getJobDocumentBlob, uploadJobDocument, fileToBase64,
   JobContext, Profile,
 } from "@/lib/data";
-import { User, FileText as FileTextIcon, Mail, CheckCircle, RefreshCcw, Camera, Check, Loader2 } from "lucide-react";
+import { User, FileText as FileTextIcon, Mail, CheckCircle, XCircle, RefreshCcw, Camera, Check, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/app/components/LoadingState";
 
 type Tab = "profile" | "documents" | "email";
+
+// Deterministic truncation so a long filename never overflows its card,
+// regardless of screen width — keeps the extension visible.
+function truncateFileName(name: string, keep: number = 8): string {
+  const dotIdx = name.lastIndexOf(".");
+  const ext = dotIdx > -1 ? name.slice(dotIdx) : "";
+  const base = dotIdx > -1 ? name.slice(0, dotIdx) : name;
+  if (base.length <= keep) return name;
+  return `${base.slice(0, keep)}....${ext}`;
+}
 
 function ProfilePageInner() {
   const searchParams = useSearchParams();
@@ -22,8 +33,10 @@ function ProfilePageInner() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [coverLetterPageInput, setCoverLetterPageInput] = useState("1");
 
   // Documents tab state
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
@@ -43,6 +56,7 @@ function ProfilePageInner() {
       if (active) {
         setTemplate(active.cover_letter_template || "");
         setOriginalTemplate(active.cover_letter_template || "");
+        setCoverLetterPageInput(String(active.cover_letter_page_number || 1));
         loadDocuments(active);
       }
     });
@@ -61,21 +75,37 @@ function ProfilePageInner() {
   };
 
   const flashSuccess = (msg: string) => {
+    setErrorMsg("");
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3000);
+  };
+
+  const flashError = (msg: string) => {
+    setSuccessMsg("");
+    setErrorMsg(msg);
+    setTimeout(() => setErrorMsg(""), 4000);
   };
 
   // ── Avatar ──────────────────────────────────────────────────────────────
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset so selecting the same file again still fires this handler.
+    e.target.value = "";
     if (!file) return;
+    // Some mobile browsers/webviews (e.g. camera captures) don't set a MIME
+    // type at all — only reject when a type IS reported and it isn't an image.
+    if (file.type && !file.type.startsWith("image/")) {
+      flashError("Bitte wählen Sie eine gültige Bilddatei aus.");
+      return;
+    }
     setIsUploadingAvatar(true);
     try {
       const url = await uploadAvatar(file);
       setProfile(prev => prev ? { ...prev, avatar_url: url } : prev);
+      flashSuccess("Profilbild erfolgreich aktualisiert!");
     } catch (err) {
       console.error(err);
-      alert("Profilbild konnte nicht hochgeladen werden.");
+      flashError("Profilbild konnte nicht hochgeladen werden.");
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -85,13 +115,15 @@ function ProfilePageInner() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!context || !profile) return;
+    const pageNumber = parseInt(coverLetterPageInput, 10) || 1;
     setLoading(true);
     setSuccessMsg("");
+    setErrorMsg("");
     try {
       await Promise.all([
         saveContext(context.id, {
           job_title: context.job_title,
-          cover_letter_page_number: context.cover_letter_page_number,
+          cover_letter_page_number: pageNumber,
         }),
         saveProfile({
           first_name: profile.first_name,
@@ -106,7 +138,7 @@ function ProfilePageInner() {
       flashSuccess("Benutzerinfos erfolgreich gespeichert!");
     } catch (err) {
       console.error(err);
-      flashSuccess("Fehler beim Speichern.");
+      flashError("Fehler beim Speichern.");
     } finally {
       setLoading(false);
     }
@@ -114,7 +146,11 @@ function ProfilePageInner() {
 
   // ── Dokumente tab ───────────────────────────────────────────────────────
   const processFile = async (file: File, type: "resume" | "cv") => {
-    if (file.type !== "application/pdf" || !context) return;
+    if (!context) return;
+    if (file.type !== "application/pdf") {
+      flashError("Bitte laden Sie eine gültige PDF-Datei hoch.");
+      return;
+    }
 
     if (type === "resume") {
       setIsUploadingResume(true);
@@ -123,9 +159,10 @@ function ProfilePageInner() {
         setResumeUrl(URL.createObjectURL(file));
         await saveContext(context.id, { resume_storage_path: path, resume_file_name: file.name });
         setContext({ ...context, resume_storage_path: path, resume_file_name: file.name });
+        flashSuccess("Bewerbungsunterlagen erfolgreich aktualisiert!");
       } catch (err) {
         console.error(err);
-        alert("Upload fehlgeschlagen. Bitte versuchen Sie es erneut.");
+        flashError("Upload fehlgeschlagen. Bitte versuchen Sie es erneut.");
       } finally {
         setIsUploadingResume(false);
       }
@@ -161,11 +198,11 @@ function ProfilePageInner() {
           setIsTemplateSaved(true);
           setTimeout(() => setIsTemplateSaved(false), 2000);
         } else {
-          alert("Fehler bei der KI-Generierung. Bitte versuchen Sie es erneut.");
+          flashError("Fehler bei der KI-Generierung. Bitte versuchen Sie es erneut.");
         }
       } catch (err) {
         console.error(err);
-        alert("Es gab einen Fehler bei der Verbindung zur KI.");
+        flashError("Es gab einen Fehler bei der Verbindung zur KI.");
       } finally {
         setIsGeneratingTemplate(false);
       }
@@ -174,6 +211,9 @@ function ProfilePageInner() {
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>, type: "resume" | "cv") => {
     const file = e.target.files?.[0];
+    // Reset so re-selecting the same file (e.g. a corrected re-upload with an
+    // unchanged name) still fires this handler next time.
+    e.target.value = "";
     if (file) await processFile(file, type);
   };
 
@@ -186,7 +226,7 @@ function ProfilePageInner() {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (file.type === "application/pdf") await processFile(file, type);
-      else alert("Bitte laden Sie eine gültige PDF-Datei hoch.");
+      else flashError("Bitte laden Sie eine gültige PDF-Datei hoch.");
     }
   };
 
@@ -207,6 +247,9 @@ function ProfilePageInner() {
     try {
       await saveContext(context.id, { email_subject: context.email_subject, email_body: context.email_body });
       flashSuccess("E-Mail-Vorlage gespeichert!");
+    } catch (err) {
+      console.error(err);
+      flashError("Fehler beim Speichern.");
     } finally {
       setLoading(false);
     }
@@ -221,36 +264,61 @@ function ProfilePageInner() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col h-full space-y-4 sm:space-y-6">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 flex flex-col">
+    <div className="max-w-6xl mx-auto flex flex-col h-full space-y-3 sm:space-y-6">
 
-        {/* Pill tabs */}
-        <div className="flex items-center gap-2 mb-8 flex-wrap">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                tab === t.id
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+      {/* Pill tabs — outside the card, always one row */}
+      <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+              tab === t.id
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            <t.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 sm:p-6 md:p-8 flex flex-col">
+
+        <AnimatePresence>
+          {successMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto", marginBottom: 24 }}
+              exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="overflow-hidden"
             >
-              <t.icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          ))}
-          <span className="ml-auto px-3 py-1 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-lg">
-            {context.job_title}
-          </span>
-        </div>
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-2 text-sm font-medium">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                {successMsg}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {successMsg && (
-          <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-2 text-sm font-medium">
-            <CheckCircle className="w-4 h-4" />
-            {successMsg}
-          </div>
-        )}
+        <AnimatePresence>
+          {errorMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto", marginBottom: 24 }}
+              exit={{ opacity: 0, y: -8, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-sm font-medium">
+                <XCircle className="w-4 h-4 shrink-0" />
+                {errorMsg}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Profil-Infos ─────────────────────────────────────────────── */}
         {tab === "profile" && (
@@ -281,92 +349,106 @@ function ProfilePageInner() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ausbildungsberuf</label>
-                <input
-                  type="text"
-                  value={context.job_title}
-                  onChange={e => setContext({...context, job_title: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Ausbildungsberuf</label>
+                  <input
+                    type="text"
+                    value={context.job_title}
+                    onChange={e => setContext({...context, job_title: e.target.value})}
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Anschreiben-Seite im Lebenslauf</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={coverLetterPageInput}
+                    onChange={e => setCoverLetterPageInput(e.target.value.replace(/\D/g, ""))}
+                    onBlur={() => {
+                      if (!coverLetterPageInput || parseInt(coverLetterPageInput, 10) < 1) setCoverLetterPageInput("1");
+                    }}
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Anschreiben-Seite im Lebenslauf</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={context.cover_letter_page_number || 1}
-                  onChange={e => setContext({...context, cover_letter_page_number: parseInt(e.target.value) || 1})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
+
+              {/* Vorname / Nachname — always one row */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Vorname</label>
+                  <input
+                    type="text"
+                    value={profile.first_name ?? ""}
+                    onChange={e => setProfile({...profile, first_name: e.target.value})}
+                    required
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nachname</label>
+                  <input
+                    type="text"
+                    value={profile.last_name ?? ""}
+                    onChange={e => setProfile({...profile, last_name: e.target.value})}
+                    required
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">E-Mail</label>
+                  <input
+                    type="email"
+                    value={profile.email ?? ""}
+                    onChange={e => setProfile({...profile, email: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Telefonnummer</label>
+                  <input
+                    type="tel"
+                    value={profile.phone ?? ""}
+                    onChange={e => setProfile({...profile, phone: e.target.value})}
+                    required
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {/* Straße / PLZ — always one row */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Straße und Hausnummer</label>
+                  <input
+                    type="text"
+                    value={profile.street_house ?? ""}
+                    onChange={e => setProfile({...profile, street_house: e.target.value})}
+                    required
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">PLZ und Ort</label>
+                  <input
+                    type="text"
+                    value={profile.postal_city ?? ""}
+                    onChange={e => setProfile({...profile, postal_city: e.target.value})}
+                    required
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Vorname</label>
-                <input
-                  type="text"
-                  value={profile.first_name ?? ""}
-                  onChange={e => setProfile({...profile, first_name: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nachname</label>
-                <input
-                  type="text"
-                  value={profile.last_name ?? ""}
-                  onChange={e => setProfile({...profile, last_name: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">E-Mail</label>
-                <input
-                  type="email"
-                  value={profile.email ?? ""}
-                  onChange={e => setProfile({...profile, email: e.target.value})}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Telefonnummer</label>
-                <input
-                  type="tel"
-                  value={profile.phone ?? ""}
-                  onChange={e => setProfile({...profile, phone: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Straße und Hausnummer</label>
-                <input
-                  type="text"
-                  value={profile.street_house ?? ""}
-                  onChange={e => setProfile({...profile, street_house: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">PLZ und Ort</label>
-                <input
-                  type="text"
-                  value={profile.postal_city ?? ""}
-                  onChange={e => setProfile({...profile, postal_city: e.target.value})}
-                  required
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-              </div>
-
-              <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1 flex justify-between">
                   Persönliche Links
                   <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">Optional</span>
@@ -397,7 +479,7 @@ function ProfilePageInner() {
         {tab === "documents" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
             <div className="lg:col-span-1 flex flex-col gap-6">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Lebenslauf</h3>
                   <label htmlFor="cv-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
@@ -421,9 +503,9 @@ function ProfilePageInner() {
                       <span className="text-sm font-medium">Lädt hoch...</span>
                     </div>
                   ) : cvUrl ? (
-                    <div className="flex flex-col items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <div className="flex flex-col items-center gap-2 text-slate-600 dark:text-slate-300 max-w-full px-2">
                       <Check className="w-8 h-8 text-purple-500" />
-                      <span className="font-bold text-sm text-center px-4">{context.cv_file_name || "Lebenslauf.pdf"}</span>
+                      <span className="font-bold text-sm text-center">{truncateFileName(context.cv_file_name || "Lebenslauf.pdf")}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
@@ -434,7 +516,7 @@ function ProfilePageInner() {
                 </label>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 flex flex-col">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Komplette Unterlagen</h3>
                   <label htmlFor="resume-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
@@ -458,9 +540,9 @@ function ProfilePageInner() {
                       <span className="text-sm font-medium">Lädt hoch...</span>
                     </div>
                   ) : resumeUrl ? (
-                    <div className="flex flex-col items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <div className="flex flex-col items-center gap-2 text-slate-600 dark:text-slate-300 max-w-full px-2">
                       <Check className="w-8 h-8 text-emerald-500" />
-                      <span className="font-bold text-sm text-center px-4">{context.resume_file_name}</span>
+                      <span className="font-bold text-sm text-center">{truncateFileName(context.resume_file_name || "")}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
@@ -472,7 +554,7 @@ function ProfilePageInner() {
               </div>
             </div>
 
-            <div className="lg:col-span-2 flex flex-col bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+            <div className="lg:col-span-2 flex flex-col bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Anschreiben-Vorlage</h3>
                 <button

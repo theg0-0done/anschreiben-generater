@@ -15,14 +15,12 @@ export async function insertCoverLetterPage(
   const coverPdf = await PDFDocument.load(coverLetterBytes);
 
   const totalPages = basePdf.getPageCount();
-  if (insertIndex < 0 || insertIndex > totalPages) {
-    throw new Error(
-      `Base PDF has ${totalPages} page(s) — cannot insert at index ${insertIndex}.`
-    );
-  }
+  // Clamp instead of rejecting — if the configured page number exceeds the
+  // resume's actual page count, just append the cover letter as the last page.
+  const clampedIndex = Math.min(Math.max(insertIndex, 0), totalPages);
 
   const [newPage] = await basePdf.copyPages(coverPdf, [0]);
-  basePdf.insertPage(insertIndex, newPage);
+  basePdf.insertPage(clampedIndex, newPage);
 
   return basePdf.save({ useObjectStreams: false });
 }

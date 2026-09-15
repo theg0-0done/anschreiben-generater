@@ -178,50 +178,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })}
       </nav>
 
-      {/* Mobile-only: Ausbildung switcher (moved here from the header, which is too narrow to fit it) */}
-      <div className="px-4 pb-4 space-y-4 md:hidden border-t border-slate-100 dark:border-slate-800 pt-4">
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-1">Ausbildung</p>
-          <div className="space-y-1">
-            {contexts.map(c => (
-              <div
-                key={c.id}
-                className={`group flex items-center gap-1 rounded-lg transition-colors ${
-                  c.id === activeId
-                    ? "bg-blue-50 dark:bg-blue-950"
-                    : "hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
-              >
-                <button
-                  onClick={() => handleSelectContext(c.id)}
-                  className={`flex-1 min-w-0 text-left px-3 py-2 text-sm truncate ${
-                    c.id === activeId
-                      ? "text-blue-700 dark:text-blue-300 font-medium"
-                      : "text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  {c.job_title}
-                </button>
-                <button
-                  onClick={() => setDeleteConfirmContext(c)}
-                  title="Ausbildung löschen"
-                  className="p-2 mr-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-md transition-colors shrink-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={handleAddAusbildung}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              Neue Ausbildung hinzufügen
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-auto" ref={accountMenuRef}>
         <button
           onClick={() => setAccountMenuOpen(v => !v)}
@@ -327,11 +283,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Logout confirmation */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-sm overflow-hidden"
             >
               <div className="p-6 text-center space-y-3">
@@ -365,11 +325,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Delete job-title confirmation */}
       <AnimatePresence>
         {deleteConfirmContext && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setDeleteConfirmContext(null)}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-sm overflow-hidden"
             >
               <div className="p-6 text-center space-y-3">
@@ -424,11 +388,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {navigation.find(n => n.href === pathname)?.name || "Übersicht"}
           </h1>
 
-          <div className="hidden md:flex items-center gap-3 sm:gap-6 ml-auto shrink-0 pl-2">
+          <div className="flex items-center gap-3 sm:gap-6 ml-auto shrink-0 pl-2">
              {/* Context Dropdown */}
              <div className="relative flex flex-col" ref={dropdownRef}>
                {/* Invisible block to force container width to the widest possible option. Hidden on mobile to prevent overflow. */}
-               <div className="invisible h-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
+               <div className="invisible h-0 overflow-hidden pointer-events-none hidden md:block" aria-hidden="true">
                  {contexts.map(c => (
                    <div key={`inv-${c.id}`} className="px-4 py-2 flex items-center gap-4 text-sm font-medium border border-transparent">
                      <span className="whitespace-nowrap">{c.job_title}</span>
@@ -446,12 +410,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                <button
                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                 className="flex items-center justify-between gap-2 sm:gap-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 sm:px-4 rounded-xl transition-colors font-medium text-sm border border-slate-200 dark:border-slate-700 w-full min-w-0"
+                 className="flex items-center justify-between gap-1.5 sm:gap-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl transition-colors font-medium text-xs sm:text-sm border border-slate-200 dark:border-slate-700 w-full min-w-0"
                >
-                 <span className="whitespace-nowrap truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">
+                 {/* Compact on mobile — first word only, to save space in the header */}
+                 <span className="whitespace-nowrap truncate max-w-[90px] md:max-w-none md:hidden">
+                   {activeContext ? `${activeContext.job_title.trim().split(/\s+/)[0]}...` : "Wählen"}
+                 </span>
+                 <span className="hidden md:inline whitespace-nowrap truncate">
                    {activeContext?.job_title || "Ausbildung wählen"}
                  </span>
-                 <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />
+                 <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 shrink-0" />
                </button>
 
                <AnimatePresence>
@@ -510,7 +478,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        <div className="flex-1 p-2 sm:p-8 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}

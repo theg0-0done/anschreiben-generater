@@ -225,7 +225,7 @@ export async function uploadAvatar(file: File): Promise<string> {
   const path = `${user.id}/avatar.${ext}`;
   const { error } = await supabase.storage.from("avatars").upload(path, file, {
     upsert: true,
-    contentType: file.type,
+    contentType: file.type || "image/jpeg",
   });
   if (error) throw error;
 
