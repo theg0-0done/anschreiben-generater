@@ -17,3 +17,17 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Most inputs in this app use text-sm (14px), which makes iOS Safari
+   auto-zoom the page on focus. 16px is the minimum that suppresses that,
+   so bump it back up just on mobile widths — desktop keeps its compact
+   text-sm sizing untouched. !important is needed here because every input
+   carries a Tailwind text-* utility class, whose class selector otherwise
+   outranks a plain element selector regardless of source order. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

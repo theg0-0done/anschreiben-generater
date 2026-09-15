@@ -596,18 +596,9 @@ export default function ScheduledEmailsPage() {
                       </div>
                     </div>
 
-                    {/* Right: status + time */}
-                    <div className="flex flex-col items-end gap-1 shrink-0">
+                    {/* Right: status only */}
+                    <div className="shrink-0">
                       {renderStatus(item.status)}
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                        <Calendar className="w-3 h-3" />
-                        {formatDateTime(item.scheduled_at)}
-                      </div>
-                      {relativeTime && (
-                        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
-                          {relativeTime}
-                        </span>
-                      )}
                     </div>
                   </button>
 
@@ -621,8 +612,19 @@ export default function ScheduledEmailsPage() {
                         className="overflow-hidden"
                       >
                         <div className="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                          {/* E-Mail */}
+                          {/* Scheduled date/time */}
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs pt-3">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                            {formatDateTime(item.scheduled_at)}
+                            {relativeTime && (
+                              <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
+                                {relativeTime}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* E-Mail */}
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs">
                             <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                             <a
                               href={`mailto:${item.to_email}`}
@@ -652,32 +654,32 @@ export default function ScheduledEmailsPage() {
                             )}
                           </div>
 
-                          {/* Actions */}
+                          {/* Actions — icon-only so three buttons always fit */}
                           <div className="flex items-center gap-2 pt-1">
                             <button
                               onClick={() => setPreviewItem(item)}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-950/70 transition-colors"
+                              title="Details & PDF anzeigen"
+                              className="flex-1 flex items-center justify-center p-2.5 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-950/70 transition-colors"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              Details
+                              <Eye className="w-4 h-4" />
                             </button>
 
                             {item.status === "pending" && (
                               <button
                                 onClick={() => handleOpenReschedule(item)}
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 rounded-xl hover:bg-cyan-100 dark:hover:bg-cyan-950/70 transition-colors"
+                                title="Sendezeitpunkt verschieben"
+                                className="flex-1 flex items-center justify-center p-2.5 text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 rounded-xl hover:bg-cyan-100 dark:hover:bg-cyan-950/70 transition-colors"
                               >
-                                <Pencil className="w-3.5 h-3.5" />
-                                Verschieben
+                                <Pencil className="w-4 h-4" />
                               </button>
                             )}
 
                             <button
                               onClick={() => setDeleteItem(item)}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/70 transition-colors"
+                              title={item.status === "pending" ? "Planung abbrechen" : "Löschen"}
+                              className="flex-1 flex items-center justify-center p-2.5 text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950/70 transition-colors"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {item.status === "pending" ? "Abbrechen" : "Löschen"}
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
