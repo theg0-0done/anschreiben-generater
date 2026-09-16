@@ -112,7 +112,7 @@ export default function ApplyPage() {
     try {
       // For full-resume mode, just pass the Blob URL — no upload needed
       if (currentMode === "full-resume" && !context.resume_storage_path) {
-        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Benutzerinfos > Dokumente hoch.");
+        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Ausbildung hoch.");
         setIsUpdatingPdf(false);
         return;
       }
@@ -193,7 +193,7 @@ export default function ApplyPage() {
     try {
       // For full-resume mode, just pass the Blob URL — no upload needed
       if (mode === "full-resume" && !context.resume_storage_path) {
-        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Benutzerinfos > Dokumente hoch.");
+        alert("Kein Lebenslauf gefunden. Bitte laden Sie Ihren Lebenslauf unter Ausbildung hoch.");
         setIsGenerating(false);
         return;
       }
