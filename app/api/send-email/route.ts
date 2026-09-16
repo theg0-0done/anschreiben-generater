@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getOAuth2ClientForUser, saveGmailCredentialsForUser, buildRawEmail } from "@/lib/gmail";
+import { getOAuth2ClientForUser, saveGmailCredentialsForUser, buildMimeMessage, sendMimeMessage } from "@/lib/gmail";
 import { createClient } from "@/lib/supabase/server";
 import { supabase as supabaseAdmin } from "@/lib/supabase";
 
@@ -59,12 +59,7 @@ export async function POST(request: NextRequest) {
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    const raw = buildRawEmail(to, subject, body, pdfBase64, fileName);
-
-    await gmail.users.messages.send({
-      userId: "me",
-      requestBody: { raw },
-    });
+    await sendMimeMessage(gmail, buildMimeMessage(to, subject, body, pdfBase64, fileName));
     const t3 = performance.now();
     console.log(`[send-email] auth: ${(t1 - t0).toFixed(0)}ms, pdf download: ${(t2 - t1).toFixed(0)}ms, gmail send: ${(t3 - t2).toFixed(0)}ms, total: ${(t3 - t0).toFixed(0)}ms`);
 

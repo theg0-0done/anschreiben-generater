@@ -117,7 +117,13 @@ export function clearTokenCookie(): string {
 
 // ─── MIME Email Builder ─────────────────────────────────────────────────────
 
-export function buildRawEmail(
+/**
+ * Builds the RFC-822 MIME message. Send this as binary via Gmail's media
+ * upload rather than base64-ing it into the JSON `raw` field — the PDF is
+ * already base64 inside the MIME body, so encoding the whole thing a second
+ * time inflates what goes over the wire by another ~33% for nothing.
+ */
+export function buildMimeMessage(
   to: string,
   subject: string,
   body: string,
@@ -147,10 +153,16 @@ export function buildRawEmail(
     `--${boundary}--`,
   ];
 
-  // Gmail API expects base64url-encoded raw message
-  return Buffer.from(emailLines.join("\r\n"))
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return emailLines.join("\r\n");
+}
+
+/** Sends a built MIME message as binary (media upload) — no second base64 pass. */
+export async function sendMimeMessage(gmail: any, mime: string): Promise<void> {
+  await gmail.users.messages.send({
+    userId: "me",
+    media: {
+      mimeType: "message/rfc822",
+      body: mime,
+    },
+  });
 }

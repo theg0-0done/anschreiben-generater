@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, saveContext, uploadJobDocument, JobContext, Profile } from "@/lib/data";
+import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, deleteScheduledPdf, saveContext, uploadJobDocument, JobContext, Profile } from "@/lib/data";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
 import { isValidEmail, EMAIL_ERROR_MESSAGE } from "@/lib/validation";
 import { Toast } from "@/app/components/Toast";
 import { LoadingState } from "@/app/components/LoadingState";
-import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud } from "lucide-react";
+import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ApplyPage() {
@@ -50,6 +50,13 @@ export default function ApplyPage() {
   const [isUploadingGeneric, setIsUploadingGeneric] = useState(false);
   const genericFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Attachment pre-upload: the ~2.4MB PDF is pushed to Storage in the
+  // background as soon as it exists, so pressing Send/Schedule doesn't have
+  // to wait for the whole transfer. (This is why Gmail feels instant — it
+  // uploads your attachment while you're still typing, not on send.)
+  const attachmentUploadRef = useRef<{ url: string; promise: Promise<string> } | null>(null);
+  const [isAttachmentReady, setIsAttachmentReady] = useState(false);
+
   const genericReady = !!context?.generic_resume_storage_path;
   const showGenericSetup = !genericReady || genericSetupOpen;
   // Whichever PDF is actually relevant right now — the per-company one or
@@ -59,6 +66,37 @@ export default function ApplyPage() {
   // instead of overwriting `mode` itself, which would otherwise clobber the
   // user's per-company mode preference the moment they flip the toggle.
   const effectiveMode = isGenericMode ? "full-resume" : mode;
+
+  const startAttachmentUpload = (url: string) => {
+    setIsAttachmentReady(false);
+
+    // A previous pre-upload for an older PDF is now dead weight — bin it so
+    // speculative uploads can't pile up in the bucket.
+    const superseded = attachmentUploadRef.current;
+    if (superseded) {
+      superseded.promise.then((path) => deleteScheduledPdf(path)).catch(() => {});
+    }
+
+    const promise = (async () => {
+      const t0 = performance.now();
+      const blob = await (await fetch(url)).blob();
+      const path = await uploadScheduledPdf(blob);
+      console.log(
+        `[attachment] pre-uploaded ${(blob.size / 1024 / 1024).toFixed(2)}MB in ${(performance.now() - t0).toFixed(0)}ms`
+      );
+      return path;
+    })();
+    promise.then(() => setIsAttachmentReady(true)).catch(() => {});
+    attachmentUploadRef.current = { url, promise };
+    return promise;
+  };
+
+  // Kick the upload off the moment a PDF is ready, not when Send is pressed.
+  useEffect(() => {
+    if (!activePdfUrl) return;
+    if (attachmentUploadRef.current?.url === activePdfUrl) return;
+    startAttachmentUpload(activePdfUrl);
+  }, [activePdfUrl]);
 
   // Load context and restored state
   useEffect(() => {
@@ -348,6 +386,30 @@ export default function ApplyPage() {
     sessionStorage.removeItem("dashboardState");
   };
 
+  // After a send/schedule goes through, empty the fields so the next
+  // application can be started right away. The scheduled-mails page is the
+  // source of truth for what actually happened, so nothing is lost here.
+  const clearAfterSend = () => {
+    setCompanyEmail("");
+    setCompanyEmailError("");
+    if (isGenericMode) {
+      // Mass-apply reuses the same PDF for every company — get the next
+      // copy uploading immediately so the next send is instant too.
+      if (activePdfUrl) startAttachmentUpload(activePdfUrl);
+    } else {
+      setCompanyName("");
+      setContactSalutation("");
+      setContactPerson("");
+      setStreet("");
+      setPostalCity("");
+      setCompanyInfo("");
+      setHook("");
+      setLastCompanyKey("");
+      setShowPreview(false);
+      setPdfUrl("");
+    }
+  };
+
   const handleCompanyEmailChange = (value: string) => {
     setCompanyEmail(value);
     if (companyEmailError) setCompanyEmailError("");
@@ -399,14 +461,23 @@ export default function ApplyPage() {
   const buildAttachmentPayload = async () => {
     if (!context || !activePdfUrl || !companyEmail) return null;
     const t0 = performance.now();
-    const pdfResponse = await fetch(activePdfUrl);
-    const pdfBlob = await pdfResponse.blob();
-    const t1 = performance.now();
-    const pdfStoragePath = await uploadScheduledPdf(pdfBlob);
-    const t2 = performance.now();
-    console.log(
-      `[send] blob read: ${(t1 - t0).toFixed(0)}ms, storage upload: ${(t2 - t1).toFixed(0)}ms, size: ${(pdfBlob.size / 1024).toFixed(0)}KB`
-    );
+
+    // Normally already finished in the background — this just picks up the
+    // result. Only falls back to uploading now if the pre-upload never ran
+    // or failed (e.g. a dropped connection).
+    const cached = attachmentUploadRef.current;
+    let pdfStoragePath: string;
+    try {
+      pdfStoragePath =
+        cached?.url === activePdfUrl ? await cached.promise : await startAttachmentUpload(activePdfUrl);
+    } catch {
+      pdfStoragePath = await startAttachmentUpload(activePdfUrl);
+    }
+    console.log(`[send] attachment ready after ${(performance.now() - t0).toFixed(0)}ms`);
+
+    // The server deletes the file once it's sent, so this copy is spent —
+    // queue a fresh one for the next application.
+    attachmentUploadRef.current = null;
 
     const { subject, body, fileName } = buildEmailContent();
     return { to: companyEmail, subject, body, pdfStoragePath, fileName };
@@ -431,6 +502,7 @@ export default function ApplyPage() {
       }
 
       setToast({ message: "✅ E-Mail erfolgreich gesendet!", type: "success" });
+      clearAfterSend();
     } catch (err: any) {
       console.error("Send email error:", err);
       setToast({ message: `❌ ${err.message || "Fehler beim Senden. Bitte erneut versuchen."}`, type: "error" });
@@ -486,6 +558,7 @@ export default function ApplyPage() {
 
       const fmt = scheduledAt.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
       setToast({ message: `⏰ E-Mail geplant für ${fmt}`, type: "success" });
+      clearAfterSend();
     } catch (err: any) {
       console.error("Schedule email error:", err);
       setToast({ message: `❌ ${err.message || "Fehler beim Planen."}`, type: "error" });
@@ -983,6 +1056,17 @@ export default function ApplyPage() {
                        ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`
                        : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
                  </p>
+                 {activePdfUrl && (
+                   isAttachmentReady ? (
+                     <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                       <Check className="w-3 h-3" /> Anhang bereit — Versand dauert nur Sekunden
+                     </p>
+                   ) : (
+                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
+                       <Loader2 className="w-3 h-3 animate-spin" /> Anhang wird im Hintergrund vorbereitet…
+                     </p>
+                   )
+                 )}
                </div>
                <div className="flex gap-2 w-full sm:w-auto shrink-0">
                  <button

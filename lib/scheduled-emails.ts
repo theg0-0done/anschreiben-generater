@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { buildRawEmail, getOAuth2ClientForUser, saveGmailCredentialsForUser } from "./gmail";
+import { buildMimeMessage, sendMimeMessage, getOAuth2ClientForUser, saveGmailCredentialsForUser } from "./gmail";
 import { supabase } from "./supabase";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -276,18 +276,10 @@ export async function processDueEmails(): Promise<{
 
       // 3. Send via Gmail API
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-      const raw = buildRawEmail(
-        item.to_email,
-        item.subject,
-        item.body,
-        pdfBase64,
-        item.file_name
+      await sendMimeMessage(
+        gmail,
+        buildMimeMessage(item.to_email, item.subject, item.body, pdfBase64, item.file_name)
       );
-
-      await gmail.users.messages.send({
-        userId: "me",
-        requestBody: { raw },
-      });
 
       if (refreshedTokens) {
         await saveGmailCredentialsForUser(item.user_id, refreshedTokens);

@@ -215,6 +215,12 @@ export async function uploadScheduledPdf(blob: Blob): Promise<string> {
   return path;
 }
 
+/** Best-effort removal of an attachment that was pre-uploaded but never sent. */
+export async function deleteScheduledPdf(path: string): Promise<void> {
+  const supabase = createClient();
+  await supabase.storage.from("scheduled-pdfs").remove([path]);
+}
+
 // ─── Avatar (public bucket — served directly, no signed URL needed) ─────────
 
 export async function uploadAvatar(file: File): Promise<string> {
