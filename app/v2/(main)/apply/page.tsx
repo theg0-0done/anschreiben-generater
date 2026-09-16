@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, JobContext, Profile } from "@/lib/data";
+import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, saveContext, uploadJobDocument, JobContext, Profile } from "@/lib/data";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
 import { Toast } from "@/app/components/Toast";
 import { LoadingState } from "@/app/components/LoadingState";
-import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin } from "lucide-react";
+import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud, FileCheck } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ApplyPage() {
@@ -40,6 +40,24 @@ export default function ApplyPage() {
   const didMountRef = useRef(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // ── Generic ("mass-apply") mode — one reusable resume, no company fields ──
+  const [isGenericMode, setIsGenericMode] = useState(false);
+  const [genericSetupOpen, setGenericSetupOpen] = useState(false);
+  const [genericPdfUrl, setGenericPdfUrl] = useState("");
+  const [isGeneratingGeneric, setIsGeneratingGeneric] = useState(false);
+  const [isUploadingGeneric, setIsUploadingGeneric] = useState(false);
+  const genericFileInputRef = useRef<HTMLInputElement>(null);
+
+  const genericReady = !!context?.generic_resume_storage_path;
+  const showGenericSetup = !genericReady || genericSetupOpen;
+  // Whichever PDF is actually relevant right now — the per-company one or
+  // the reusable generic one — so download/send/schedule share one code path.
+  const activePdfUrl = isGenericMode ? genericPdfUrl : pdfUrl;
+  // Generic applications are always the full merged document — derive this
+  // instead of overwriting `mode` itself, which would otherwise clobber the
+  // user's per-company mode preference the moment they flip the toggle.
+  const effectiveMode = isGenericMode ? "full-resume" : mode;
+
   // Load context and restored state
   useEffect(() => {
     getActiveContext().then(setContext);
@@ -59,6 +77,7 @@ export default function ApplyPage() {
         setMode(parsed.mode || "cover-letter");
         setLastCompanyKey(parsed.lastCompanyKey || "");
         setCompanyEmail(parsed.companyEmail || "");
+        setIsGenericMode(parsed.isGenericMode || false);
         if (parsed.pdfUrl) {
           setPdfUrl(parsed.pdfUrl);
         }
@@ -73,6 +92,16 @@ export default function ApplyPage() {
       .catch(() => setGmailConnected(false));
     setIsLoaded(true);
   }, []);
+
+  // Lazily fetch the stored generic resume the first time generic mode is
+  // opened (or on a later visit, once) rather than on every mount.
+  useEffect(() => {
+    if (isGenericMode && context?.generic_resume_storage_path && !genericPdfUrl) {
+      getJobDocumentBlob(context.generic_resume_storage_path).then((blob) => {
+        if (blob) setGenericPdfUrl(URL.createObjectURL(blob));
+      });
+    }
+  }, [isGenericMode, context?.generic_resume_storage_path, genericPdfUrl]);
 
   // Close the schedule dropdown when clicking outside of it
   useEffect(() => {
@@ -101,10 +130,11 @@ export default function ApplyPage() {
       mode,
       pdfUrl,
       lastCompanyKey,
-      companyEmail
+      companyEmail,
+      isGenericMode
     };
     sessionStorage.setItem("dashboardState", JSON.stringify(state));
-  }, [isLoaded, companyName, contactSalutation, contactPerson, street, postalCity, companyInfo, hook, showPreview, mode, pdfUrl, lastCompanyKey, companyEmail]);
+  }, [isLoaded, companyName, contactSalutation, contactPerson, street, postalCity, companyInfo, hook, showPreview, mode, pdfUrl, lastCompanyKey, companyEmail, isGenericMode]);
 
   const generatePdf = async (currentHook: string, currentMode: string) => {
     if (!context) return;
@@ -265,6 +295,7 @@ export default function ApplyPage() {
 
   // Automatically update the PDF if the mode changes and we already have a preview
   useEffect(() => {
+    if (isGenericMode) return; // generic mode has its own pre-built PDF
     if (showPreview && hook) {
       generatePdf(hook, mode);
     }
@@ -279,20 +310,22 @@ export default function ApplyPage() {
       didMountRef.current = true;
       return;
     }
-    if (pdfUrl) {
+    if (activePdfUrl) {
       previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [pdfUrl]);
+  }, [activePdfUrl]);
 
   const handleDownload = () => {
-    if (!pdfUrl) return;
+    if (!activePdfUrl) return;
     const a = document.createElement("a");
-    a.href = pdfUrl;
-    
-    const filename = mode === "cover-letter" 
-      ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf` 
-      : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`;
-      
+    a.href = activePdfUrl;
+
+    const filename = isGenericMode
+      ? (context?.generic_resume_file_name || "Allgemeine_Bewerbung.pdf")
+      : mode === "cover-letter"
+        ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`
+        : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`;
+
     a.download = filename;
     a.click();
   };
@@ -337,16 +370,17 @@ export default function ApplyPage() {
       emailBody = emailBody.replace(regex, value);
     }
 
-    const fileName =
-      `Bewerbungsunterlagen_${companyName.replace(/\s+/g, "_")}_${profile?.first_name}_${profile?.last_name}.pdf`;
+    const fileName = isGenericMode
+      ? (context!.generic_resume_file_name || "Bewerbungsunterlagen.pdf")
+      : `Bewerbungsunterlagen_${companyName.trim() ? companyName.replace(/\s+/g, "_") : "Allgemein"}_${profile?.first_name}_${profile?.last_name}.pdf`;
 
     return { subject, body: emailBody, fileName };
   };
 
   // Instant send: attaches the PDF as base64 in the request straight to Gmail.
   const buildEmailPayload = async () => {
-    if (!context || !pdfUrl || !companyEmail) return null;
-    const pdfResponse = await fetch(pdfUrl);
+    if (!context || !activePdfUrl || !companyEmail) return null;
+    const pdfResponse = await fetch(activePdfUrl);
     const pdfBlob = await pdfResponse.blob();
     const arrayBuffer = await pdfBlob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -365,9 +399,9 @@ export default function ApplyPage() {
   // hop) instead of round-tripping a base64-inflated copy through our server
   // (two hops) — this is what made scheduling take 30-40s for a multi-MB file.
   const buildSchedulePayload = async () => {
-    if (!context || !pdfUrl || !companyEmail) return null;
+    if (!context || !activePdfUrl || !companyEmail) return null;
     const t0 = performance.now();
-    const pdfResponse = await fetch(pdfUrl);
+    const pdfResponse = await fetch(activePdfUrl);
     const pdfBlob = await pdfResponse.blob();
     const t1 = performance.now();
     const pdfStoragePath = await uploadScheduledPdf(pdfBlob);
@@ -381,7 +415,7 @@ export default function ApplyPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!context || !pdfUrl || !companyEmail) return;
+    if (!context || !activePdfUrl || !companyEmail) return;
     setIsSending(true);
     try {
       const payload = await buildEmailPayload();
@@ -408,7 +442,7 @@ export default function ApplyPage() {
   };
 
   const handleScheduleSend = async (scheduledAt: Date) => {
-    if (!context || !pdfUrl || !companyEmail) return;
+    if (!context || !activePdfUrl || !companyEmail) return;
     setIsScheduling(true);
     setShowScheduleMenu(false);
     setShowCustomDatePicker(false);
@@ -419,12 +453,16 @@ export default function ApplyPage() {
       const locationParts = [street, postalCity].filter(Boolean);
       const fullLocation = locationParts.length > 0 ? locationParts.join(", ") : "Deutschland";
 
-      const attachmentsList = mode === "full-resume"
+      const attachmentsList = effectiveMode === "full-resume"
         ? ["Anschreiben", "Lebenslauf & Zeugnisse"]
         : ["Anschreiben (PDF)"];
 
+      // Generic sends have no company name — use the recipient's email domain
+      // instead so the scheduled-mails list still shows something meaningful.
+      const genericCompanyLabel = companyEmail.split("@")[1] || "Unbekanntes Unternehmen";
+
       const metadata = {
-        companyName: companyName.trim() || "Unternehmen",
+        companyName: isGenericMode ? genericCompanyLabel : (companyName.trim() || "Unternehmen"),
         contactPerson: contactPerson.trim() || "Personalabteilung",
         contactSalutation: contactSalutation || "",
         location: fullLocation,
@@ -458,6 +496,92 @@ export default function ApplyPage() {
     }
   };
 
+  // ── Generic ("mass-apply") resume: generate once, reuse for every send ───
+  const saveGenericResume = async (blobOrFile: Blob, fileName: string) => {
+    if (!context) return;
+    const path = await uploadJobDocument(context.id, "generic", blobOrFile);
+    await saveContext(context.id, { generic_resume_storage_path: path, generic_resume_file_name: fileName });
+    setContext(prev => prev ? { ...prev, generic_resume_storage_path: path, generic_resume_file_name: fileName } : prev);
+    setGenericPdfUrl(prev => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blobOrFile);
+    });
+    setGenericSetupOpen(false);
+  };
+
+  const handleGenerateGenericResume = async () => {
+    if (!context) return;
+    if (!context.resume_storage_path) {
+      setToast({ message: "❌ Bitte laden Sie zuerst Ihre vollständigen Bewerbungsunterlagen unter Ausbildung hoch.", type: "error" });
+      return;
+    }
+    setIsGeneratingGeneric(true);
+    try {
+      const branchStr = (context.job_title.toLowerCase().includes("hotel") || context.job_title.toLowerCase().includes("gastro")) ? "gastronomie" : "informatik";
+      // Reuse the same company-agnostic hook already used for the "no company
+      // info entered" fast path — just swap in a neutral phrase instead of a
+      // real company name.
+      const genericHook = (context.fallback_hook || "").replace(/\[companyName\]/g, "Ihrem Unternehmen");
+
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branch: branchStr,
+          companyName: "",
+          jobTitle: context.job_title,
+          companyStreet: "",
+          companyZipCity: "",
+          contactPerson: "",
+          contactSalutation: "",
+          mode: "cover-letter",
+          coverLetterPageNumber: context.cover_letter_page_number || 1,
+          customHook: genericHook,
+          coverLetterTemplate: context.cover_letter_template,
+        }),
+      });
+      if (!res.ok) throw new Error("Fehler bei der PDF-Generierung");
+
+      const coverBlob = await res.blob();
+      const coverBuffer = new Uint8Array(await coverBlob.arrayBuffer());
+      const resumeBlob = await getJobDocumentBlob(context.resume_storage_path);
+      if (!resumeBlob) throw new Error("Fehler beim Herunterladen des Lebenslaufs");
+      const resumeBuffer = new Uint8Array(await resumeBlob.arrayBuffer());
+
+      const insertIndex = Math.max(0, (context.cover_letter_page_number || 1) - 1);
+      const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
+      const mergedBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
+
+      await saveGenericResume(mergedBlob, "Allgemeine_Bewerbung.pdf");
+      setToast({ message: "✅ Allgemeine Bewerbung erfolgreich erstellt!", type: "success" });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "❌ Fehler bei der Erstellung der allgemeinen Bewerbung.", type: "error" });
+    } finally {
+      setIsGeneratingGeneric(false);
+    }
+  };
+
+  const handleGenericFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setToast({ message: "❌ Bitte laden Sie eine gültige PDF-Datei hoch.", type: "error" });
+      return;
+    }
+    setIsUploadingGeneric(true);
+    try {
+      await saveGenericResume(file, file.name);
+      setToast({ message: "✅ Allgemeine Bewerbung erfolgreich hochgeladen!", type: "success" });
+    } catch (err) {
+      console.error(err);
+      setToast({ message: "❌ Upload fehlgeschlagen. Bitte versuchen Sie es erneut.", type: "error" });
+    } finally {
+      setIsUploadingGeneric(false);
+    }
+  };
+
   // ── Pre-computed schedule options (mirrors Gmail) ─────────────────────────
   const getScheduleOptions = () => {
     const now = new Date();
@@ -487,17 +611,39 @@ export default function ApplyPage() {
         <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-8 lg:pb-0">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 md:p-8 flex flex-col shrink-0 min-h-full">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-6 shrink-0">
+            <div className="flex items-center gap-3 mb-4 shrink-0">
               <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Unternehmensinfos</h2>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Angaben zur Zielposition für Ihre Bewerbung</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {isGenericMode ? "Eine Bewerbung für alle Unternehmen" : "Angaben zur Zielposition für Ihre Bewerbung"}
+                </p>
               </div>
             </div>
 
-            <div className="space-y-5 flex flex-col flex-1">
+            {/* Generic ("mass-apply") toggle */}
+            <label className="flex items-center justify-between gap-3 mb-5 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer shrink-0">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Allgemeine Bewerbung</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Ohne Firmenbezug — nur die E-Mail-Adresse wird benötigt</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isGenericMode}
+                onClick={() => setIsGenericMode(v => !v)}
+                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${isGenericMode ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isGenericMode ? "translate-x-5" : ""}`} />
+              </button>
+            </label>
+
+            <motion.div layout transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }} className="flex flex-col flex-1">
+            <AnimatePresence mode="wait" initial={false}>
+            {!isGenericMode ? (
+            <motion.div key="company-fields" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-5 flex flex-col flex-1">
               {/* Section: Unternehmen */}
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Unternehmen</p>
@@ -599,8 +745,91 @@ export default function ApplyPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
+            ) : (
+            <motion.div key="generic-setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col">
+              {showGenericSetup ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-8">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div className="max-w-xs">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">
+                      {genericReady ? "Allgemeine Bewerbung ändern" : "Noch keine allgemeine Bewerbung"}
+                    </p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+                      Einmal erstellen — hochgeladen oder mit KI generiert — und für jede Massenbewerbung wiederverwenden.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full sm:w-auto">
+                    <button
+                      onClick={handleGenerateGenericResume}
+                      disabled={isGeneratingGeneric || isUploadingGeneric}
+                      className="flex-1 sm:flex-initial whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] disabled:opacity-70"
+                    >
+                      {isGeneratingGeneric ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Wird generiert...</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4" /> Mit KI generieren</>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => genericFileInputRef.current?.click()}
+                      disabled={isGeneratingGeneric || isUploadingGeneric}
+                      className="flex-1 sm:flex-initial whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-700 active:scale-[0.98] disabled:opacity-70"
+                    >
+                      {isUploadingGeneric ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Wird hochgeladen...</>
+                      ) : (
+                        <><UploadCloud className="w-4 h-4" /> PDF hochladen</>
+                      )}
+                    </button>
+                    <input ref={genericFileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleGenericFileSelect} />
+                  </div>
+                  {genericReady && (
+                    <button
+                      onClick={() => setGenericSetupOpen(false)}
+                      className="text-xs font-medium text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 pt-1"
+                    >
+                      Abbrechen
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col space-y-4">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200 truncate">
+                        {context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf"}
+                      </span>
+                    </div>
+                    <button onClick={() => setGenericSetupOpen(true)} className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0">
+                      Ändern
+                    </button>
+                  </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">E-Mail des Unternehmens</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+                      <input
+                        type="email"
+                        placeholder="kontakt@unternehmen.de"
+                        value={companyEmail}
+                        onChange={(e) => setCompanyEmail(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+            )}
+            </AnimatePresence>
+            </motion.div>
+
+            {!isGenericMode && (
             <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-4 sm:items-center shrink-0">
               <div className="relative w-full sm:w-56">
                 <select
@@ -625,24 +854,29 @@ export default function ApplyPage() {
                 )}
               </button>
             </div>
+            )}
 
           </div>
         </div>
 
         {/* Right Preview Panel */}
         <div ref={previewSectionRef} className="lg:col-span-1 flex flex-col h-full pb-8 lg:pb-0">
-           {showPreview && (
+           {(isGenericMode ? genericReady && !genericSetupOpen : showPreview) && (
              <div className="mb-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
                <div className="min-w-0 flex-1 w-full sm:w-auto">
-                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Generierte Datei</p>
-                 <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate" title={mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}>
-                   {mode === "cover-letter" 
-                     ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` 
-                     : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
+                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                   {isGenericMode ? "Allgemeine Bewerbung" : "Generierte Datei"}
+                 </p>
+                 <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate" title={isGenericMode ? (context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf") : mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}>
+                   {isGenericMode
+                     ? (context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf")
+                     : mode === "cover-letter"
+                       ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`
+                       : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
                  </p>
                </div>
                <div className="flex gap-2 w-full sm:w-auto shrink-0">
-                 <button 
+                 <button
                    onClick={handleDownload}
                    className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
                  >
@@ -650,7 +884,7 @@ export default function ApplyPage() {
                  </button>
 
                  {/* Send + Schedule: only shown when Gmail connected, full-resume mode AND company email entered */}
-                 {gmailConnected && mode === "full-resume" && companyEmail && (
+                 {gmailConnected && effectiveMode === "full-resume" && companyEmail && (
                    <div className="relative flex" ref={scheduleMenuRef}>
                      {/* Send now */}
                      <button
@@ -749,28 +983,30 @@ export default function ApplyPage() {
                    </div>
                  )}
 
-                 <button 
-                   onClick={handleReset}
-                   className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
-                 >
-                   Neu
-                 </button>
+                 {!isGenericMode && (
+                   <button
+                     onClick={handleReset}
+                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+                   >
+                     Neu
+                   </button>
+                 )}
                </div>
              </div>
            )}
 
            <div className="bg-slate-200 dark:bg-slate-700 rounded-2xl border border-slate-300 dark:border-slate-600 flex flex-col flex-1 h-full min-h-[500px] lg:min-h-0 overflow-hidden relative w-full mx-auto">
-             
-             {showPreview && pdfUrl ? (
+
+             {activePdfUrl ? (
                <div className="absolute inset-0 w-full h-full rounded-2xl overflow-hidden">
                  {isUpdatingPdf && (
                    <div className="absolute inset-0 z-10 bg-slate-200/50 backdrop-blur-sm flex items-center justify-center">
                      <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                    </div>
                  )}
-                 <iframe 
-                   src={`${pdfUrl}#toolbar=0&view=FitH`} 
-                   className="w-full h-full border-none" 
+                 <iframe
+                   src={`${activePdfUrl}#toolbar=0&view=FitH`}
+                   className="w-full h-full border-none"
                  />
                </div>
              ) : (

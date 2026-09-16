@@ -3,7 +3,8 @@ import { z } from "zod";
 export const FormDataSchema = z.object({
   branch: z.enum(["informatik", "gastronomie"]),
   // Required
-  companyName: z.string().min(1, "Firmenname ist erforderlich"),
+  // Empty string is allowed for generic (no specific company) applications.
+  companyName: z.string().optional().default(""),
   jobTitle: z.string().min(1, "Stellenbezeichnung ist erforderlich"),
 
   // Optional company address

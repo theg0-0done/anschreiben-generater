@@ -28,6 +28,8 @@ export interface JobContext {
   fallback_hook: string | null;
   email_subject: string | null;
   email_body: string | null;
+  generic_resume_storage_path: string | null;
+  generic_resume_file_name: string | null;
 }
 
 const BUCKET = "job-documents";
@@ -158,8 +160,8 @@ export function setActiveContextId(id: string): void {
 
 export async function uploadJobDocument(
   contextId: string,
-  slot: "cv" | "resume",
-  file: File
+  slot: "cv" | "resume" | "generic",
+  file: File | Blob
 ): Promise<string> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
