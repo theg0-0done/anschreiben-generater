@@ -469,7 +469,7 @@ export default function ScheduledEmailsPage() {
                                   title={att}
                                 >
                                   <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                  <span className="truncate max-w-[110px]">{att}</span>
+                                  <span className="truncate max-w-[220px]">{att}</span>
                                 </span>
                               ))
                             ) : (
@@ -643,7 +643,7 @@ export default function ScheduledEmailsPage() {
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700"
                                 >
                                   <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                  <span className="truncate max-w-[140px]">{att}</span>
+                                  <span className="truncate max-w-[180px]">{att}</span>
                                 </span>
                               ))
                             ) : (

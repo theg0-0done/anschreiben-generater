@@ -453,9 +453,9 @@ export default function ApplyPage() {
       const locationParts = [street, postalCity].filter(Boolean);
       const fullLocation = locationParts.length > 0 ? locationParts.join(", ") : "Deutschland";
 
-      const attachmentsList = effectiveMode === "full-resume"
-        ? ["Anschreiben", "Lebenslauf & Zeugnisse"]
-        : ["Anschreiben (PDF)"];
+      // Show the actual generated file name in the scheduled-mails list
+      // instead of a generic label.
+      const attachmentsList = [payload.fileName];
 
       // Generic sends have no company name — use the recipient's email domain
       // instead so the scheduled-mails list still shows something meaningful.
