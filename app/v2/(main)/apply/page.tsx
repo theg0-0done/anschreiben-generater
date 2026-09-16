@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, saveContext, uploadJobDocument, JobContext, Profile } from "@/lib/data";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
+import { isValidEmail, EMAIL_ERROR_MESSAGE } from "@/lib/validation";
 import { Toast } from "@/app/components/Toast";
 import { LoadingState } from "@/app/components/LoadingState";
-import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud, FileCheck } from "lucide-react";
+import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function ApplyPage() {
@@ -28,6 +29,7 @@ export default function ApplyPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [lastCompanyKey, setLastCompanyKey] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
+  const [companyEmailError, setCompanyEmailError] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
@@ -321,7 +323,7 @@ export default function ApplyPage() {
     a.href = activePdfUrl;
 
     const filename = isGenericMode
-      ? (context?.generic_resume_file_name || "Allgemeine_Bewerbung.pdf")
+      ? (context?.generic_resume_file_name || genericResumeFileName())
       : mode === "cover-letter"
         ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`
         : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`;
@@ -342,7 +344,19 @@ export default function ApplyPage() {
     setShowPreview(false);
     setPdfUrl("");
     setCompanyEmail("");
+    setCompanyEmailError("");
     sessionStorage.removeItem("dashboardState");
+  };
+
+  const handleCompanyEmailChange = (value: string) => {
+    setCompanyEmail(value);
+    if (companyEmailError) setCompanyEmailError("");
+  };
+
+  const handleCompanyEmailBlur = () => {
+    if (companyEmail && !isValidEmail(companyEmail)) {
+      setCompanyEmailError(EMAIL_ERROR_MESSAGE);
+    }
   };
 
   // ── Shared: build the subject/body/fileName from current state ───────────
@@ -497,6 +511,9 @@ export default function ApplyPage() {
   };
 
   // ── Generic ("mass-apply") resume: generate once, reuse for every send ───
+  const genericResumeFileName = () =>
+    `Bewerbungsunterlagen_${profile?.first_name || "Bewerbung"}_${profile?.last_name || ""}`.replace(/_+$/, "") + ".pdf";
+
   const saveGenericResume = async (blobOrFile: Blob, fileName: string) => {
     if (!context) return;
     const path = await uploadJobDocument(context.id, "generic", blobOrFile);
@@ -552,7 +569,7 @@ export default function ApplyPage() {
       const mergedBytes = await insertCoverLetterPage(coverBuffer, resumeBuffer, branchStr, insertIndex);
       const mergedBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
 
-      await saveGenericResume(mergedBlob, "Allgemeine_Bewerbung.pdf");
+      await saveGenericResume(mergedBlob, genericResumeFileName());
       setToast({ message: "✅ Allgemeine Bewerbung erfolgreich erstellt!", type: "success" });
     } catch (err) {
       console.error(err);
@@ -598,6 +615,112 @@ export default function ApplyPage() {
       { label: "Morgen Mittag", date: tomorrowAfternoon, detail: `${fmtDate(tomorrowAfternoon)}, ${fmtTime(tomorrowAfternoon)}` },
       ...(day !== 1 ? [{ label: "Montag früh", date: mondayMorning, detail: `${fmtDate(mondayMorning)}, ${fmtTime(mondayMorning)}` }] : []),
     ];
+  };
+
+  // Shared Send + Schedule control — rendered next to "Herunterladen" for a
+  // per-company application, or under the email field in generic mode.
+  const renderSendScheduleActions = (fullWidth = false) => {
+    if (!(gmailConnected && effectiveMode === "full-resume" && companyEmail)) return null;
+    const emailInvalid = !isValidEmail(companyEmail);
+    return (
+      <div className={`relative flex ${fullWidth ? "w-full" : ""}`} ref={scheduleMenuRef}>
+        {/* Send now */}
+        <button
+          onClick={handleSendEmail}
+          disabled={isSending || isScheduling || emailInvalid}
+          title={emailInvalid ? EMAIL_ERROR_MESSAGE : undefined}
+          className={`bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white pl-4 pr-2 py-2.5 rounded-l-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 border-r border-emerald-500 ${fullWidth ? "flex-1" : ""}`}
+        >
+          {isSending ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Wird gesendet...</>
+          ) : (
+            <><Send className="w-4 h-4" /> Senden</>
+          )}
+        </button>
+        {/* Schedule dropdown arrow */}
+        <button
+          onClick={() => { setShowScheduleMenu(v => !v); setShowCustomDatePicker(false); }}
+          disabled={isSending || isScheduling || emailInvalid}
+          title={emailInvalid ? EMAIL_ERROR_MESSAGE : "Geplanten Sendezeitpunkt wählen"}
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-2.5 rounded-r-xl text-sm font-semibold flex items-center gap-0.5 transition-all shadow-md active:scale-95"
+        >
+          {isScheduling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Schedule dropdown */}
+        <AnimatePresence>
+          {showScheduleMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-x-4 bottom-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 sm:w-[360px]"
+            >
+              <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Geplanter Versand</span>
+                <button onClick={() => setShowScheduleMenu(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 px-4 pb-2">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
+              <div className="divide-y divide-slate-50">
+                {getScheduleOptions().map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => handleScheduleSend(opt.date)}
+                    className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between gap-4"
+                  >
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{opt.label}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{opt.detail}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-slate-100 dark:border-slate-800 p-2">
+                {!showCustomDatePicker ? (
+                  <button
+                    onClick={() => setShowCustomDatePicker(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" /> Datum &amp; Uhrzeit wählen
+                  </button>
+                ) : (
+                  <div className="p-2 space-y-2">
+                    <input
+                      type="date"
+                      value={customScheduleDate}
+                      onChange={e => setCustomScheduleDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={customScheduleTime}
+                      onChange={e => setCustomScheduleTime(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!customScheduleDate) return;
+                        const d = new Date(`${customScheduleDate}T${customScheduleTime}`);
+                        if (isNaN(d.getTime()) || d <= new Date()) {
+                          alert("Bitte ein Datum in der Zukunft wählen.");
+                          return;
+                        }
+                        handleScheduleSend(d);
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    >
+                      Planen
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
   if (!context) return <LoadingState message="Daten werden geladen..." />;
@@ -717,10 +840,16 @@ export default function ApplyPage() {
                     type="email"
                     placeholder="E-Mail des Unternehmens"
                     value={companyEmail}
-                    onChange={(e) => setCompanyEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    onChange={(e) => handleCompanyEmailChange(e.target.value)}
+                    onBlur={handleCompanyEmailBlur}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                      companyEmailError
+                        ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
+                    }`}
                   />
                 </div>
+                {companyEmailError && <p className="text-xs text-rose-600 dark:text-rose-400 px-0.5">{companyEmailError}</p>}
               </div>
 
               {/* Section: Stellenbeschreibung */}
@@ -797,18 +926,6 @@ export default function ApplyPage() {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col space-y-4">
-                  <div className="flex items-center justify-between gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200 truncate">
-                        {context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf"}
-                      </span>
-                    </div>
-                    <button onClick={() => setGenericSetupOpen(true)} className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0">
-                      Ändern
-                    </button>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">E-Mail des Unternehmens</label>
                     <div className="relative">
@@ -817,11 +934,19 @@ export default function ApplyPage() {
                         type="email"
                         placeholder="kontakt@unternehmen.de"
                         value={companyEmail}
-                        onChange={(e) => setCompanyEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        onChange={(e) => handleCompanyEmailChange(e.target.value)}
+                        onBlur={handleCompanyEmailBlur}
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                          companyEmailError
+                            ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400"
+                            : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
+                        }`}
                       />
                     </div>
+                    {companyEmailError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{companyEmailError}</p>}
                   </div>
+
+                  {companyEmail && renderSendScheduleActions(true)}
                 </div>
               )}
             </motion.div>
@@ -867,9 +992,9 @@ export default function ApplyPage() {
                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                    {isGenericMode ? "Allgemeine Bewerbung" : "Generierte Datei"}
                  </p>
-                 <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate" title={isGenericMode ? (context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf") : mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}>
+                 <p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-100 truncate" title={isGenericMode ? (context.generic_resume_file_name || genericResumeFileName()) : mode === "cover-letter" ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf` : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}>
                    {isGenericMode
-                     ? (context.generic_resume_file_name || "Allgemeine_Bewerbung.pdf")
+                     ? (context.generic_resume_file_name || genericResumeFileName())
                      : mode === "cover-letter"
                        ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`
                        : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
@@ -883,105 +1008,17 @@ export default function ApplyPage() {
                    Herunterladen
                  </button>
 
-                 {/* Send + Schedule: only shown when Gmail connected, full-resume mode AND company email entered */}
-                 {gmailConnected && effectiveMode === "full-resume" && companyEmail && (
-                   <div className="relative flex" ref={scheduleMenuRef}>
-                     {/* Send now */}
-                     <button
-                       onClick={handleSendEmail}
-                       disabled={isSending || isScheduling}
-                       className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white pl-4 pr-2 py-2.5 rounded-l-xl text-sm font-semibold flex items-center gap-1.5 transition-all shadow-md active:scale-95 border-r border-emerald-500"
-                     >
-                       {isSending ? (
-                         <><Loader2 className="w-4 h-4 animate-spin" /> Wird gesendet...</>
-                       ) : (
-                         <><Send className="w-4 h-4" /> Senden</>
-                       )}
-                     </button>
-                     {/* Schedule dropdown arrow */}
-                     <button
-                       onClick={() => { setShowScheduleMenu(v => !v); setShowCustomDatePicker(false); }}
-                       disabled={isSending || isScheduling}
-                       title="Geplanten Sendezeitpunkt wählen"
-                       className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-2.5 rounded-r-xl text-sm font-semibold flex items-center gap-0.5 transition-all shadow-md active:scale-95"
-                     >
-                       {isScheduling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                     </button>
-
-                     {/* Schedule dropdown */}
-                     <AnimatePresence>
-                       {showScheduleMenu && (
-                         <motion.div
-                           initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                           exit={{ opacity: 0, y: 8, scale: 0.97 }}
-                           transition={{ duration: 0.15 }}
-                           className="fixed inset-x-4 bottom-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 sm:w-[360px]"
-                         >
-                           <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-                             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Geplanter Versand</span>
-                             <button onClick={() => setShowScheduleMenu(false)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-0.5">
-                               <X className="w-3.5 h-3.5" />
-                             </button>
-                           </div>
-                           <div className="text-[10px] text-slate-400 dark:text-slate-500 px-4 pb-2">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
-                           <div className="divide-y divide-slate-50">
-                             {getScheduleOptions().map((opt) => (
-                               <button
-                                 key={opt.label}
-                                 onClick={() => handleScheduleSend(opt.date)}
-                                 className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-between gap-4"
-                               >
-                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{opt.label}</span>
-                                 <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{opt.detail}</span>
-                               </button>
-                             ))}
-                           </div>
-                           <div className="border-t border-slate-100 dark:border-slate-800 p-2">
-                             {!showCustomDatePicker ? (
-                               <button
-                                 onClick={() => setShowCustomDatePicker(true)}
-                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                               >
-                                 <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" /> Datum &amp; Uhrzeit wählen
-                               </button>
-                             ) : (
-                               <div className="p-2 space-y-2">
-                                 <input
-                                   type="date"
-                                   value={customScheduleDate}
-                                   onChange={e => setCustomScheduleDate(e.target.value)}
-                                   min={new Date().toISOString().split("T")[0]}
-                                   className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                                 />
-                                 <input
-                                   type="time"
-                                   value={customScheduleTime}
-                                   onChange={e => setCustomScheduleTime(e.target.value)}
-                                   className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
-                                 />
-                                 <button
-                                   onClick={() => {
-                                     if (!customScheduleDate) return;
-                                     const d = new Date(`${customScheduleDate}T${customScheduleTime}`);
-                                     if (isNaN(d.getTime()) || d <= new Date()) {
-                                       alert("Bitte ein Datum in der Zukunft wählen.");
-                                       return;
-                                     }
-                                     handleScheduleSend(d);
-                                   }}
-                                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-                                 >
-                                   Planen
-                                 </button>
-                               </div>
-                             )}
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
+                 {isGenericMode && (
+                   <button
+                     onClick={() => setGenericSetupOpen(true)}
+                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+                   >
+                     Ändern
+                   </button>
                  )}
+
+                 {/* Send + Schedule live under the email field for generic mode instead */}
+                 {!isGenericMode && renderSendScheduleActions()}
 
                  {!isGenericMode && (
                    <button

@@ -14,6 +14,7 @@ import {
   setActiveContextId,
 } from "@/lib/data";
 import { LoadingState } from "@/app/components/LoadingState";
+import { isValidEmail, EMAIL_ERROR_MESSAGE } from "@/lib/validation";
 
 const REQUIRED_PROFILE_FIELDS = ["first_name", "last_name", "email", "street_house", "postal_city"] as const;
 
@@ -42,6 +43,7 @@ export default function OnboardingPage() {
   const [postalCity, setPostalCity] = useState("");
   const [personalLinks, setPersonalLinks] = useState("");
   const [coverLetterPageNumber, setCoverLetterPageNumber] = useState("1");
+  const [emailError, setEmailError] = useState("");
 
   // If the user already completed their personal info before (e.g. they're
   // signed in and adding another job title), skip straight to step 2.
@@ -66,6 +68,11 @@ export default function OnboardingPage() {
   const handleSavePersonalInfo = async () => {
     if (!firstName || !lastName || !email || !streetHouse || !postalCity) {
       setErrorMsg("Bitte füllen Sie alle erforderlichen Felder aus.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setEmailError(EMAIL_ERROR_MESSAGE);
+      setErrorMsg(EMAIL_ERROR_MESSAGE);
       return;
     }
     setErrorMsg("");
@@ -245,7 +252,16 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">E-Mail</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(""); }}
+                    onBlur={() => { if (email && !isValidEmail(email)) setEmailError(EMAIL_ERROR_MESSAGE); }}
+                    className={`w-full px-4 py-3 rounded-xl border bg-white/50 focus:bg-white focus:outline-none transition-all ${
+                      emailError ? "border-rose-400 focus:ring-2 focus:ring-rose-400" : "border-slate-200 focus:ring-2 focus:ring-blue-500"
+                    }`}
+                  />
+                  {emailError && <p className="text-xs text-rose-600 mt-1">{emailError}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>

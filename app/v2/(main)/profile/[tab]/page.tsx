@@ -12,6 +12,7 @@ import {
 import { User, Briefcase, FileText as FileTextIcon, Mail, CheckCircle, XCircle, RefreshCcw, Camera, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/app/components/LoadingState";
+import { isValidEmail, EMAIL_ERROR_MESSAGE } from "@/lib/validation";
 
 type Tab = "user" | "ausbildung" | "email";
 const VALID_TABS: Tab[] = ["user", "ausbildung", "email"];
@@ -38,18 +39,22 @@ export default function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [coverLetterPageInput, setCoverLetterPageInput] = useState("1");
+  const [userEmailError, setUserEmailError] = useState("");
 
   // Ausbildung tab state
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [genericResumeUrl, setGenericResumeUrl] = useState<string | null>(null);
   const [template, setTemplate] = useState("");
   const [originalTemplate, setOriginalTemplate] = useState("");
   const [isTemplateSaved, setIsTemplateSaved] = useState(false);
   const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
   const [isCvDragging, setIsCvDragging] = useState(false);
   const [isResumeDragging, setIsResumeDragging] = useState(false);
+  const [isGenericDragging, setIsGenericDragging] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [isUploadingGeneric, setIsUploadingGeneric] = useState(false);
 
   useEffect(() => {
     getActiveContext().then(active => {
@@ -72,6 +77,10 @@ export default function ProfilePage() {
     if (ctx.cv_storage_path) {
       const blob = await getJobDocumentBlob(ctx.cv_storage_path);
       if (blob) setCvUrl(URL.createObjectURL(blob));
+    }
+    if (ctx.generic_resume_storage_path) {
+      const blob = await getJobDocumentBlob(ctx.generic_resume_storage_path);
+      if (blob) setGenericResumeUrl(URL.createObjectURL(blob));
     }
   };
 
@@ -116,6 +125,11 @@ export default function ProfilePage() {
   const handleSaveUserInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (profile.email && !isValidEmail(profile.email)) {
+      setUserEmailError(EMAIL_ERROR_MESSAGE);
+      flashError(EMAIL_ERROR_MESSAGE);
+      return;
+    }
     setLoading(true);
     setSuccessMsg("");
     setErrorMsg("");
@@ -161,10 +175,27 @@ export default function ProfilePage() {
     }
   };
 
-  const processFile = async (file: File, type: "resume" | "cv") => {
+  const processFile = async (file: File, type: "resume" | "cv" | "generic") => {
     if (!context) return;
     if (file.type !== "application/pdf") {
       flashError("Bitte laden Sie eine gültige PDF-Datei hoch.");
+      return;
+    }
+
+    if (type === "generic") {
+      setIsUploadingGeneric(true);
+      try {
+        const path = await uploadJobDocument(context.id, "generic", file);
+        setGenericResumeUrl(URL.createObjectURL(file));
+        await saveContext(context.id, { generic_resume_storage_path: path, generic_resume_file_name: file.name });
+        setContext({ ...context, generic_resume_storage_path: path, generic_resume_file_name: file.name });
+        flashSuccess("Allgemeine Bewerbung erfolgreich aktualisiert!");
+      } catch (err) {
+        console.error(err);
+        flashError("Upload fehlgeschlagen. Bitte versuchen Sie es erneut.");
+      } finally {
+        setIsUploadingGeneric(false);
+      }
       return;
     }
 
@@ -225,7 +256,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>, type: "resume" | "cv") => {
+  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>, type: "resume" | "cv" | "generic") => {
     const file = e.target.files?.[0];
     // Reset so re-selecting the same file (e.g. a corrected re-upload with an
     // unchanged name) still fires this handler next time.
@@ -236,7 +267,7 @@ export default function ProfilePage() {
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
   const handleDragEnter = (e: React.DragEvent, setDragging: (b: boolean) => void) => { e.preventDefault(); setDragging(true); };
   const handleDragLeave = (e: React.DragEvent, setDragging: (b: boolean) => void) => { e.preventDefault(); setDragging(false); };
-  const handleDrop = async (e: React.DragEvent, type: "resume" | "cv", setDragging: (b: boolean) => void) => {
+  const handleDrop = async (e: React.DragEvent, type: "resume" | "cv" | "generic", setDragging: (b: boolean) => void) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
@@ -396,9 +427,13 @@ export default function ProfilePage() {
                   <input
                     type="email"
                     value={profile.email ?? ""}
-                    onChange={e => setProfile({...profile, email: e.target.value})}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    onChange={e => { setProfile({...profile, email: e.target.value}); if (userEmailError) setUserEmailError(""); }}
+                    onBlur={() => { if (profile.email && !isValidEmail(profile.email)) setUserEmailError(EMAIL_ERROR_MESSAGE); }}
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                      userEmailError ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400" : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
+                    }`}
                   />
+                  {userEmailError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{userEmailError}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Telefonnummer</label>
@@ -578,6 +613,43 @@ export default function ProfilePage() {
                       <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
                         <FileTextIcon className="w-8 h-8 opacity-50" />
                         <span className="text-sm">Keine Unterlagen</span>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Allgemeine Bewerbung</h3>
+                    <label htmlFor="generic-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
+                      ändern
+                    </label>
+                    <input id="generic-upload-input" type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileInput(e, "generic")} />
+                  </div>
+                  <label
+                    htmlFor="generic-upload-input"
+                    onDragOver={handleDragOver}
+                    onDragEnter={(e) => handleDragEnter(e, setIsGenericDragging)}
+                    onDragLeave={(e) => handleDragLeave(e, setIsGenericDragging)}
+                    onDrop={(e) => handleDrop(e, "generic", setIsGenericDragging)}
+                    className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                      isGenericDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    {isUploadingGeneric ? (
+                      <div className="flex flex-col items-center gap-2 text-blue-600">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span className="text-sm font-medium">Lädt hoch...</span>
+                      </div>
+                    ) : genericResumeUrl ? (
+                      <div className="flex flex-col items-center gap-2 text-slate-600 dark:text-slate-300 max-w-full px-2">
+                        <Check className="w-8 h-8 text-blue-500" />
+                        <span className="font-bold text-sm text-center">{truncateFileName(context.generic_resume_file_name || "")}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
+                        <FileTextIcon className="w-8 h-8 opacity-50" />
+                        <span className="text-sm text-center px-2">Für Massenbewerbungen ohne Firmenbezug — auch im Bewerbungsbereich generierbar</span>
                       </div>
                     )}
                   </label>
