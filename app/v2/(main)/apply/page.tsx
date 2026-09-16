@@ -391,28 +391,12 @@ export default function ApplyPage() {
     return { subject, body: emailBody, fileName };
   };
 
-  // Instant send: attaches the PDF as base64 in the request straight to Gmail.
-  const buildEmailPayload = async () => {
-    if (!context || !activePdfUrl || !companyEmail) return null;
-    const pdfResponse = await fetch(activePdfUrl);
-    const pdfBlob = await pdfResponse.blob();
-    const arrayBuffer = await pdfBlob.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    const CHUNK = 8192;
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-    }
-    const pdfBase64 = window.btoa(binary);
-
-    const { subject, body, fileName } = buildEmailContent();
-    return { to: companyEmail, subject, body, pdfBase64, fileName };
-  };
-
-  // Scheduled send: uploads the PDF straight to Storage from the browser (one
-  // hop) instead of round-tripping a base64-inflated copy through our server
-  // (two hops) — this is what made scheduling take 30-40s for a multi-MB file.
-  const buildSchedulePayload = async () => {
+  // Shared by instant send and scheduling: uploads the PDF straight to
+  // Storage from the browser (one hop) instead of base64-inflating it and
+  // round-tripping that through our server as JSON (two hops, ~33% bigger,
+  // plus a slow byte-by-byte encode in the browser) — this is what made
+  // sending/scheduling a multi-MB file take up to 40s instead of 1-2s.
+  const buildAttachmentPayload = async () => {
     if (!context || !activePdfUrl || !companyEmail) return null;
     const t0 = performance.now();
     const pdfResponse = await fetch(activePdfUrl);
@@ -421,7 +405,7 @@ export default function ApplyPage() {
     const pdfStoragePath = await uploadScheduledPdf(pdfBlob);
     const t2 = performance.now();
     console.log(
-      `[schedule] blob read: ${(t1 - t0).toFixed(0)}ms, storage upload: ${(t2 - t1).toFixed(0)}ms, size: ${(pdfBlob.size / 1024).toFixed(0)}KB`
+      `[send] blob read: ${(t1 - t0).toFixed(0)}ms, storage upload: ${(t2 - t1).toFixed(0)}ms, size: ${(pdfBlob.size / 1024).toFixed(0)}KB`
     );
 
     const { subject, body, fileName } = buildEmailContent();
@@ -432,7 +416,7 @@ export default function ApplyPage() {
     if (!context || !activePdfUrl || !companyEmail) return;
     setIsSending(true);
     try {
-      const payload = await buildEmailPayload();
+      const payload = await buildAttachmentPayload();
       if (!payload) throw new Error("Payload konnte nicht erstellt werden.");
 
       const res = await fetch("/api/send-email", {
@@ -461,7 +445,7 @@ export default function ApplyPage() {
     setShowScheduleMenu(false);
     setShowCustomDatePicker(false);
     try {
-      const payload = await buildSchedulePayload();
+      const payload = await buildAttachmentPayload();
       if (!payload) throw new Error("Payload konnte nicht erstellt werden.");
 
       const locationParts = [street, postalCity].filter(Boolean);
