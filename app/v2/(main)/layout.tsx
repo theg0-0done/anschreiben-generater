@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getContexts, getActiveContextId, setActiveContextId, deleteContext, getProfile, JobContext, Profile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
 import { getStoredTheme, applyTheme } from "@/lib/theme";
+import { rememberAccount } from "@/lib/rememberedAccounts";
 import { Logo } from "@/app/components/Logo";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     getContexts().then(setContexts);
-    getProfile().then(setProfile);
+    getProfile().then((p) => {
+      setProfile(p);
+      if (p?.email) {
+        rememberAccount({
+          email: p.email,
+          name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email,
+          avatarUrl: p.avatar_url,
+        });
+      }
+    });
     setActiveId(getActiveContextId());
 
     // Check scheduled pending count
@@ -65,6 +75,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // If the browser restores this page from bfcache (e.g. pressing "back"
+  // after signing out), force a real reload so middleware re-checks the
+  // session instead of showing a stale, no-longer-authenticated page.
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   const handleToggleDarkMode = () => {
     const next = isDarkMode ? "light" : "dark";
     applyTheme(next);
@@ -75,7 +96,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      router.push("/login");
+      // Full navigation (not router.push) so the old session's client-router
+      // cache and history entry can't be replayed via the back button.
+      window.location.href = "/login";
     } catch (err) {
       console.error("Failed to sign out", err);
     }

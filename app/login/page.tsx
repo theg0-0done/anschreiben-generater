@@ -1,28 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Sparkles, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/app/components/Logo";
+import { getRememberedAccounts, forgetAccount, RememberedAccount } from "@/lib/rememberedAccounts";
+
+const SILENT_ATTEMPT_KEY = "bewerbify_silent_login_email";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [accounts, setAccounts] = useState<RememberedAccount[]>([]);
 
-  const handleGoogleSignIn = async () => {
+  useEffect(() => {
+    setAccounts(getRememberedAccounts());
+
+    // If we just came back from a silent (prompt=none) sign-in attempt that
+    // didn't work out (no active Google session, revoked consent, etc.),
+    // Supabase redirects back here with an error instead of a code — fall
+    // back to a normal interactive sign-in for that same account.
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("error");
+    if (authError) {
+      window.history.replaceState({}, "", "/login");
+      const silentEmail = sessionStorage.getItem(SILENT_ATTEMPT_KEY);
+      sessionStorage.removeItem(SILENT_ATTEMPT_KEY);
+      if (silentEmail) {
+        handleGoogleSignIn(silentEmail, false);
+      } else {
+        setError("Die Anmeldung wurde abgebrochen oder ist fehlgeschlagen.");
+      }
+    }
+  }, []);
+
+  const handleGoogleSignIn = async (loginHint?: string, silent: boolean = !!loginHint) => {
     setError("");
     setIsLoading(true);
+    setLoadingEmail(loginHint ?? null);
     try {
       const supabase = createClient();
+      const queryParams: Record<string, string> = { access_type: "offline" };
+      if (loginHint) queryParams.login_hint = loginHint;
+      queryParams.prompt = silent ? "none" : "consent";
+
+      if (silent && loginHint) {
+        sessionStorage.setItem(SILENT_ATTEMPT_KEY, loginHint);
+      } else {
+        sessionStorage.removeItem(SILENT_ATTEMPT_KEY);
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           scopes: "https://www.googleapis.com/auth/gmail.send",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+          queryParams,
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -32,7 +66,14 @@ export default function LoginPage() {
       console.error("Sign-in error:", err);
       setError(err.message || "Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
       setIsLoading(false);
+      setLoadingEmail(null);
     }
+  };
+
+  const handleForget = (e: React.MouseEvent, email: string) => {
+    e.stopPropagation();
+    forgetAccount(email);
+    setAccounts(getRememberedAccounts());
   };
 
   return (
@@ -43,10 +84,7 @@ export default function LoginPage() {
         className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/50 p-8 sm:p-10 text-center"
       >
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-            <Sparkles className="w-7 h-7 text-blue-600" />
-          </div>
-          <Logo className="text-3xl" />
+          <Logo className="text-4xl" />
           <p className="text-slate-500 text-sm">
             Melde dich mit Google an, um deine Bewerbungen zu verwalten und Anschreiben direkt aus deinem Gmail-Konto zu versenden.
           </p>
@@ -56,12 +94,69 @@ export default function LoginPage() {
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-left">{error}</div>
         )}
 
+        {accounts.length > 0 && (
+          <div className="space-y-2 mb-4 text-left">
+            <AnimatePresence initial={false}>
+              {accounts.map((acc) => (
+                <motion.div
+                  key={acc.email}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden"
+                >
+                  <div className="w-full flex items-center gap-1 p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors group">
+                    <button
+                      type="button"
+                      onClick={() => handleGoogleSignIn(acc.email)}
+                      disabled={isLoading}
+                      className="flex-1 min-w-0 flex items-center gap-3 p-1 disabled:opacity-60"
+                    >
+                      {acc.avatarUrl ? (
+                        <img src={acc.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
+                          {acc.name.charAt(0).toUpperCase() || "U"}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="text-sm font-medium text-slate-800 truncate">{acc.name}</p>
+                        <p className="text-xs text-slate-400 truncate">{acc.email}</p>
+                      </div>
+                    </button>
+                    {isLoading && loadingEmail === acc.email ? (
+                      <Loader2 className="w-4 h-4 text-slate-400 animate-spin shrink-0 mr-2" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => handleForget(e, acc.email)}
+                        disabled={isLoading}
+                        title="Konto entfernen"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0 disabled:opacity-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-xs text-slate-400">oder</span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+          </div>
+        )}
+
         <button
-          onClick={handleGoogleSignIn}
+          onClick={() => handleGoogleSignIn()}
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-70 text-slate-700 px-6 py-3 rounded-xl font-medium transition-all shadow-sm active:scale-[0.98]"
         >
-          {isLoading ? (
+          {isLoading && !loadingEmail ? (
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
           ) : (
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -71,7 +166,7 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
           )}
-          {isLoading ? "Wird weitergeleitet..." : "Mit Google anmelden"}
+          {isLoading && !loadingEmail ? "Wird weitergeleitet..." : accounts.length > 0 ? "Anderes Konto verwenden" : "Mit Google anmelden"}
         </button>
 
         <p className="text-xs text-slate-400 mt-6">
