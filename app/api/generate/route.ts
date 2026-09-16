@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "crypto";
 import { FormDataSchema } from "@/lib/types";
 import { generateCoverLetterPdf } from "@/lib/pdf-generator";
-import { insertCoverLetterPage } from "@/lib/pdf-merger";
+import { requireUser } from "@/lib/api-auth";
 
 const anthropic = new Anthropic({ apiKey: process.env.CLAUD_API_KEY || "" });
 
@@ -111,6 +111,9 @@ function sanitizeFilename(str: string): string {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const t0 = performance.now();
   try {
+    const { response: unauthorized } = await requireUser();
+    if (unauthorized) return unauthorized;
+
     const body: unknown = await req.json();
     const parsed = FormDataSchema.safeParse(body);
 
@@ -148,41 +151,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.log(`[generate] 📄 PDF generation END — ${(performance.now() - tPdf).toFixed(0)}ms`);
 
     // Step 2: Merge or return standalone
+    // Merging the cover letter into the full resume happens client-side (see
+    // apply/page.tsx) — this route only ever produces the cover-letter page.
     const companySlug = sanitizeFilename(formData.companyName || "Unbekannt");
-    let finalPdfBytes: Uint8Array;
-    let fileName: string;
-
-    if (formData.mode === "full-resume") {
-      const tMerge = performance.now();
-      console.log(`[generate] 📎 PDF merge START`);
-      const insertIndex = Math.max(0, (formData.coverLetterPageNumber || 1) - 1);
-
-      if (!formData.resumeBlobUrl) {
-        return NextResponse.json(
-          { success: false, error: "resumeBlobUrl is required for full-resume mode. Please re-upload your resume on the Uploads page." },
-          { status: 400 }
-        );
-      }
-
-      // Fetch the user's resume from Vercel Blob — same-network fetch, ~10-50ms
-      const tFetch = performance.now();
-      const blobRes = await fetch(formData.resumeBlobUrl);
-      if (!blobRes.ok) {
-        return NextResponse.json(
-          { success: false, error: "Failed to fetch resume from storage. Please re-upload your resume." },
-          { status: 502 }
-        );
-      }
-      const basePdfBytes = new Uint8Array(await blobRes.arrayBuffer());
-      console.log(`[generate] 📥 Blob fetch END — ${(performance.now() - tFetch).toFixed(0)}ms (${basePdfBytes.length} bytes)`);
-
-      finalPdfBytes = await insertCoverLetterPage(coverLetterBytes, basePdfBytes, formData.branch, insertIndex);
-      console.log(`[generate] 📎 PDF merge END — ${(performance.now() - tMerge).toFixed(0)}ms`);
-      fileName = `Bewerbungsunterlagen_${companySlug}_Said_Fateh.pdf`;
-    } else {
-      finalPdfBytes = coverLetterBytes;
-      fileName = `Anschreiben_${companySlug}_Said_Fateh.pdf`;
-    }
+    const finalPdfBytes: Uint8Array = coverLetterBytes;
+    const fileName = `Anschreiben_${companySlug}.pdf`;
 
     console.log(`[generate] ✅ Done — ${(performance.now() - t0).toFixed(0)}ms total`);
 

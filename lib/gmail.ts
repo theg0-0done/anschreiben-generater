@@ -1,6 +1,5 @@
 import { google } from "googleapis";
 import crypto from "crypto";
-import { cookies } from "next/headers";
 import { supabase as supabaseAdmin } from "@/lib/supabase";
 
 // ─── OAuth2 Client ──────────────────────────────────────────────────────────
@@ -88,31 +87,6 @@ export function decryptTokens(encoded: string): object {
     decipher.final(),
   ]);
   return JSON.parse(decrypted.toString("utf8"));
-}
-
-// ─── Cookie Helpers ─────────────────────────────────────────────────────────
-
-const COOKIE_NAME = "gmail_tokens";
-
-export async function getTokensFromCookies(): Promise<object | null> {
-  try {
-    const cookieStore = await cookies();
-    const cookie = cookieStore.get(COOKIE_NAME);
-    if (!cookie?.value) return null;
-    return decryptTokens(cookie.value);
-  } catch {
-    return null;
-  }
-}
-
-export function buildTokenCookie(encrypted: string): string {
-  const maxAge = 60 * 60 * 24 * 30; // 30 days
-  const secure = process.env.NODE_ENV === "production";
-  return `${COOKIE_NAME}=${encrypted}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure ? "; Secure" : ""}`;
-}
-
-export function clearTokenCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 // ─── MIME Email Builder ─────────────────────────────────────────────────────

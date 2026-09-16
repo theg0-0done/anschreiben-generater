@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "crypto";
+import { requireUser } from "@/lib/api-auth";
 // @ts-ignore
 import pdf from "pdf-parse";
 
@@ -26,6 +27,9 @@ function truncateWords(text: string, maxWords: number): string {
 export async function POST(req: NextRequest) {
   const t0 = performance.now();
   try {
+    const { response: unauthorized } = await requireUser();
+    if (unauthorized) return unauthorized;
+
     if (!process.env.CLAUD_API_KEY) {
       return NextResponse.json(
         { error: "CLAUD_API_KEY is not configured in .env" },

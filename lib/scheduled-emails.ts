@@ -216,6 +216,9 @@ export async function getScheduledEmailPdf(
 // credentials are looked up per-row from gmail_credentials, not a stale
 // snapshot, so a refreshed/reconnected token is always used.
 
+/** How long a row may sit in 'processing' before it's treated as abandoned. */
+const STUCK_PROCESSING_MINUTES = 15;
+
 export async function processDueEmails(): Promise<{
   processed: number;
   sent: string[];
@@ -229,9 +232,31 @@ export async function processDueEmails(): Promise<{
   // is a single atomic statement at the Postgres level, so two overlapping
   // calls can never both claim the same row — whichever commits first wins,
   // the other's WHERE clause simply matches nothing for that row anymore.
+  // First, surface anything a previous run claimed but never finished — a
+  // timed-out/killed worker leaves rows stuck in 'processing' forever, where
+  // they'd otherwise be silently never sent and never reported. They're
+  // marked failed rather than auto-retried: the send may well have reached
+  // Gmail before the worker died, and a duplicate application is worse than
+  // a visible error the user can act on.
+  const stuckCutoff = new Date(Date.now() - STUCK_PROCESSING_MINUTES * 60_000).toISOString();
+  const { data: stuckRows } = await supabase
+    .from("scheduled_emails")
+    .update({
+      status: "failed",
+      error:
+        "Versand wurde unterbrochen. Bitte im Gmail-Ordner „Gesendet“ prüfen und bei Bedarf neu planen.",
+    })
+    .eq("status", "processing")
+    .lt("processing_started_at", stuckCutoff)
+    .select("id");
+
+  if (stuckRows?.length) {
+    console.warn(`[scheduled-emails] Recovered ${stuckRows.length} stuck row(s) from a dead worker`);
+  }
+
   const { data: dueEmails, error: fetchError } = await supabase
     .from("scheduled_emails")
-    .update({ status: "processing" })
+    .update({ status: "processing", processing_started_at: now })
     .eq("status", "pending")
     .lte("scheduled_at", now)
     .select("*");

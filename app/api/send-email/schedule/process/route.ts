@@ -15,13 +15,10 @@ function isAuthorized(request: NextRequest): boolean {
     if (bearer === cronSecret) return true;
   }
 
-  // 3. Query Param: ?secret=<CRON_SECRET> or ?cron_secret=<CRON_SECRET>
-  const querySecret =
-    request.nextUrl.searchParams.get("secret") ||
-    request.nextUrl.searchParams.get("cron_secret");
-  if (cronSecret && querySecret === cronSecret) return true;
+  // Deliberately no ?secret= query-param support: secrets in URLs leak into
+  // access logs, proxy logs and Referer headers. pg_cron sends the header.
 
-  // 4. Local dev mode fallback (allow localhost testing — Vercel Cron only
+  // 3. Local dev mode fallback (allow localhost testing — Vercel Cron only
   // runs in production, so this is also what lets the app self-trigger
   // processing while developing)
   if (process.env.NODE_ENV !== "production") {
