@@ -19,6 +19,7 @@ import {
   Eye,
   Loader2,
   Mail,
+  RotateCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toast } from "@/app/components/Toast";
@@ -32,9 +33,11 @@ interface ScheduledItem {
   file_name: string;
   scheduled_at: string;
   created_at: string;
-  status: "pending" | "sent" | "failed" | "cancelled";
+  status: "pending" | "processing" | "sent" | "failed" | "cancelled";
   error?: string;
   sent_at?: string;
+  /** Set once the attachment has been swept from Storage — no preview, no resend. */
+  pdf_deleted_at?: string | null;
   metadata?: {
     companyName?: string;
     contactPerson?: string;
@@ -61,6 +64,8 @@ export default function ScheduledEmailsPage() {
 
   const [deleteItem, setDeleteItem] = useState<ScheduledItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const [previewItem, setPreviewItem] = useState<ScheduledItem | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -113,11 +118,16 @@ export default function ScheduledEmailsPage() {
     });
   }, [items, activeContext]);
 
+  /** Still on its way out: queued, or already claimed by the send worker. */
+  const isInFlight = (item: ScheduledItem) =>
+    item.status === "pending" || item.status === "processing";
+
   // Filtered items (searches exclusively through company names)
   const filteredItems = useMemo(() => {
     return contextItems.filter((item) => {
-      // Status filter
-      if (statusFilter === "pending" && item.status !== "pending") return false;
+      // Status filter — "processing" is a pending row the worker has already
+      // claimed, so it belongs under Geplant rather than in its own tab.
+      if (statusFilter === "pending" && !isInFlight(item)) return false;
       if (statusFilter === "sent" && item.status !== "sent") return false;
       if (statusFilter === "cancelled" && item.status !== "cancelled" && item.status !== "failed") return false;
 
@@ -136,7 +146,7 @@ export default function ScheduledEmailsPage() {
   const counts = useMemo(() => {
     return {
       all: contextItems.length,
-      pending: contextItems.filter((i) => i.status === "pending").length,
+      pending: contextItems.filter(isInFlight).length,
       sent: contextItems.filter((i) => i.status === "sent").length,
       cancelled: contextItems.filter((i) => i.status === "cancelled" || i.status === "failed").length,
     };
@@ -186,6 +196,34 @@ export default function ScheduledEmailsPage() {
       setToast({ message: err.message || "Fehler beim Verschieben", type: "error" });
     } finally {
       setIsRescheduling(false);
+    }
+  };
+
+  // A failed send can go out again as long as its attachment is still around.
+  const canRetry = (item: ScheduledItem) => item.status === "failed" && !item.pdf_deleted_at;
+
+  // Re-queue a failed send, then poke the processor so it goes out now rather
+  // than on the next scheduled tick.
+  const handleRetry = async (item: ScheduledItem) => {
+    setRetryingId(item.id);
+    try {
+      const res = await fetch("/api/send-email/schedule", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, retry: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erneutes Senden fehlgeschlagen");
+      }
+
+      await fetch("/api/send-email/schedule/process", { method: "POST" }).catch(() => {});
+      await fetchItems();
+      setToast({ message: "E-Mail wird erneut gesendet.", type: "success" });
+    } catch (err: any) {
+      setToast({ message: err.message || "Erneutes Senden fehlgeschlagen", type: "error" });
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -266,6 +304,13 @@ export default function ScheduledEmailsPage() {
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
             Geplant
+          </span>
+        );
+      case "processing":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Wird gesendet
           </span>
         );
       case "sent":
@@ -522,6 +567,22 @@ export default function ScheduledEmailsPage() {
                               </button>
                             )}
 
+                            {/* Resend (failed sends only) */}
+                            {canRetry(item) && (
+                              <button
+                                onClick={() => handleRetry(item)}
+                                disabled={retryingId === item.id}
+                                title="Erneut senden"
+                                className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-full transition-colors disabled:opacity-50"
+                              >
+                                {retryingId === item.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RotateCw className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+
                             {/* Trash / Cancel Button */}
                             <button
                               onClick={() => setDeleteItem(item)}
@@ -671,6 +732,21 @@ export default function ScheduledEmailsPage() {
                                 className="flex-1 flex items-center justify-center p-2.5 text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 rounded-xl hover:bg-cyan-100 dark:hover:bg-cyan-950/70 transition-colors"
                               >
                                 <Pencil className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {canRetry(item) && (
+                              <button
+                                onClick={() => handleRetry(item)}
+                                disabled={retryingId === item.id}
+                                title="Erneut senden"
+                                className="flex-1 flex items-center justify-center p-2.5 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950/70 transition-colors disabled:opacity-50"
+                              >
+                                {retryingId === item.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <RotateCw className="w-4 h-4" />
+                                )}
                               </button>
                             )}
 
@@ -944,30 +1020,52 @@ export default function ScheduledEmailsPage() {
                   </div>
                 </div>
 
+                {/* Why it failed — the whole reason the resend button is there */}
+                {previewItem.status === "failed" && previewItem.error && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-sm text-rose-700 dark:text-rose-300">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="min-w-0">{previewItem.error}</span>
+                  </div>
+                )}
+
                 {/* PDF Document Preview */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       Bewerbungsunterlagen (PDF)
                     </h4>
-                    <a
-                      href={`/api/send-email/schedule?id=${previewItem.id}&pdf=true`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      Im neuen Tab öffnen
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                    {!previewItem.pdf_deleted_at && (
+                      <a
+                        href={`/api/send-email/schedule?id=${previewItem.id}&pdf=true`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                      >
+                        Im neuen Tab öffnen
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                   </div>
 
-                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 h-96 shadow-inner">
-                    <iframe
-                      src={`/api/send-email/schedule?id=${previewItem.id}&pdf=true`}
-                      className="w-full h-full"
-                      title="PDF Preview"
-                    />
-                  </div>
+                  {previewItem.pdf_deleted_at ? (
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 p-6 text-center space-y-1">
+                      <FileText className="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600" />
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                        {previewItem.file_name}
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Der Anhang wurde nach zwei Tagen automatisch gelöscht.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 h-96 shadow-inner">
+                      <iframe
+                        src={`/api/send-email/schedule?id=${previewItem.id}&pdf=true`}
+                        className="w-full h-full"
+                        title="PDF Preview"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -985,6 +1083,20 @@ export default function ScheduledEmailsPage() {
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       Verschieben
+                    </button>
+                  )}
+                  {canRetry(previewItem) && (
+                    <button
+                      onClick={() => {
+                        const itm = previewItem;
+                        setPreviewItem(null);
+                        handleRetry(itm);
+                      }}
+                      disabled={retryingId === previewItem.id}
+                      className="px-4 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950/70 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                      Erneut senden
                     </button>
                   )}
                   <button

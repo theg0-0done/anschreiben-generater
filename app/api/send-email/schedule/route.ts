@@ -4,6 +4,7 @@ import {
   getAllScheduledEmails,
   saveScheduledEmail,
   rescheduleScheduledEmail,
+  retryFailedEmail,
   deleteScheduledEmail,
   getScheduledEmailPdf,
 } from "@/lib/scheduled-emails";
@@ -116,9 +117,31 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
     }
 
-    const { id, scheduledAt } = await request.json();
-    if (!id || !scheduledAt) {
-      return NextResponse.json({ error: "ID und scheduledAt sind erforderlich." }, { status: 400 });
+    const { id, scheduledAt, retry } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: "ID ist erforderlich." }, { status: 400 });
+    }
+
+    // Retry = put a failed send back in the queue as due now. The processor
+    // picks it up on its next tick; the client nudges it so that's immediate.
+    if (retry) {
+      const result = await retryFailedEmail(id, user.id);
+      if (!result.ok) {
+        return NextResponse.json(
+          {
+            error:
+              result.reason === "attachment_gone"
+                ? "Der Anhang wurde nach zwei Tagen gelöscht. Bitte die Bewerbung neu erstellen."
+                : "Diese E-Mail kann nicht erneut gesendet werden.",
+          },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json({ success: true, retried: true });
+    }
+
+    if (!scheduledAt) {
+      return NextResponse.json({ error: "scheduledAt ist erforderlich." }, { status: 400 });
     }
 
     const newDate = new Date(scheduledAt);

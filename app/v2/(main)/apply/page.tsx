@@ -513,12 +513,33 @@ export default function ApplyPage() {
     }
     console.log(`[send] attachment ready after ${(performance.now() - t0).toFixed(0)}ms`);
 
-    // The server deletes the file once it's sent, so this copy is spent —
-    // queue a fresh one for the next application.
+    // This copy now belongs to the sent/scheduled mail — queue a fresh one
+    // for the next application rather than pointing two rows at one file.
     attachmentUploadRef.current = null;
 
     const { subject, body, fileName } = buildEmailContent();
     return { to: companyEmail, subject, body, pdfStoragePath, fileName };
+  };
+
+  // What the scheduled-mails list shows for this application. Sent and
+  // scheduled mails both land in that list, so both carry the same metadata.
+  const buildApplicationMetadata = (fileName: string) => {
+    const locationParts = [street, postalCity].filter(Boolean);
+
+    // Generic sends have no company name — use the recipient's email domain
+    // instead so the scheduled-mails list still shows something meaningful.
+    const genericCompanyLabel = companyEmail.split("@")[1] || "Unbekanntes Unternehmen";
+
+    return {
+      companyName: isGenericMode ? genericCompanyLabel : (companyName.trim() || "Unternehmen"),
+      contactPerson: contactPerson.trim() || "Personalabteilung",
+      contactSalutation: contactSalutation || "",
+      location: locationParts.length > 0 ? locationParts.join(", ") : "Deutschland",
+      jobTitle: context!.job_title || "Bewerbung",
+      contextId: context!.id,
+      // Show the actual generated file name instead of a generic label.
+      attachments: [fileName],
+    };
   };
 
   const handleSendEmail = async () => {
@@ -532,7 +553,7 @@ export default function ApplyPage() {
       const res = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, metadata: buildApplicationMetadata(payload.fileName) }),
       });
 
       if (!res.ok) {
@@ -560,34 +581,13 @@ export default function ApplyPage() {
       const payload = await buildAttachmentPayload();
       if (!payload) throw new Error("Payload konnte nicht erstellt werden.");
 
-      const locationParts = [street, postalCity].filter(Boolean);
-      const fullLocation = locationParts.length > 0 ? locationParts.join(", ") : "Deutschland";
-
-      // Show the actual generated file name in the scheduled-mails list
-      // instead of a generic label.
-      const attachmentsList = [payload.fileName];
-
-      // Generic sends have no company name — use the recipient's email domain
-      // instead so the scheduled-mails list still shows something meaningful.
-      const genericCompanyLabel = companyEmail.split("@")[1] || "Unbekanntes Unternehmen";
-
-      const metadata = {
-        companyName: isGenericMode ? genericCompanyLabel : (companyName.trim() || "Unternehmen"),
-        contactPerson: contactPerson.trim() || "Personalabteilung",
-        contactSalutation: contactSalutation || "",
-        location: fullLocation,
-        jobTitle: context.job_title || "Bewerbung",
-        contextId: context.id,
-        attachments: attachmentsList,
-      };
-
       const res = await fetch("/api/send-email/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...payload,
           scheduledAt: scheduledAt.toISOString(),
-          metadata,
+          metadata: buildApplicationMetadata(payload.fileName),
         }),
       });
 
