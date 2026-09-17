@@ -8,6 +8,20 @@
   font-family: 'Modak', cursive, sans-serif;
 }
 
+/* Landing page typography: display face on headings, body face everywhere
+   else. Scoped to .landing-type so the app itself keeps the system stack it
+   was built against. */
+.landing-type h1,
+.landing-type h2,
+.landing-type h3 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Anchor jumps from the landing nav must clear the floating pill header. */
+.landing-type [id] {
+  scroll-margin-top: 6rem;
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
