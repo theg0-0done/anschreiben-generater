@@ -1,15 +1,46 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { getActiveContext, getProfile, getJobDocumentBlob, uploadScheduledPdf, deleteScheduledPdf, saveContext, uploadJobDocument, JobContext, Profile } from "@/lib/data";
 import { insertCoverLetterPage } from "@/lib/pdf-merger";
 import { isValidEmail, EMAIL_ERROR_MESSAGE } from "@/lib/validation";
 import { Toast } from "@/app/components/Toast";
 import { LoadingState } from "@/app/components/LoadingState";
-import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud, Check } from "lucide-react";
+import { Loader2, Zap, ChevronDown, Mail, Send, Clock, X, Calendar, Building2, User, MapPin, Sparkles, UploadCloud, Check, Lock, LogIn } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useIsSignedIn } from "../auth-state";
+
+/**
+ * Stand-in context for the signed-out preview. There is no Ausbildung to load
+ * without an account, but the page is built around one — giving it an empty
+ * placeholder keeps every render path identical instead of forking the whole
+ * component into a second "preview" version that would drift out of sync.
+ */
+const PREVIEW_CONTEXT: JobContext = {
+  id: "",
+  user_id: "",
+  job_title: "Ihre Ausbildung",
+  branch: null,
+  cv_storage_path: null,
+  resume_storage_path: null,
+  cv_file_name: null,
+  resume_file_name: null,
+  cover_letter_template: null,
+  cover_letter_page_number: 1,
+  fallback_hook: null,
+  email_subject: null,
+  email_body: null,
+  generic_resume_storage_path: null,
+  generic_resume_file_name: null,
+};
 
 export default function ApplyPage() {
+  // Signed-out visitors may browse and fill the form; anything that costs
+  // credits or touches their Gmail asks them to sign in first.
+  const isLocked = !useIsSignedIn();
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
   const [context, setContext] = useState<JobContext | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -100,8 +131,12 @@ export default function ApplyPage() {
 
   // Load context and restored state
   useEffect(() => {
-    getActiveContext().then(setContext);
-    getProfile().then(setProfile);
+    if (isLocked) {
+      setContext(PREVIEW_CONTEXT);
+    } else {
+      getActiveContext().then(setContext);
+      getProfile().then(setProfile);
+    }
     const saved = sessionStorage.getItem("dashboardState");
     if (saved) {
       try {
@@ -126,12 +161,14 @@ export default function ApplyPage() {
       }
     }
     // Check Gmail auth status
-    fetch("/api/auth/status")
-      .then(res => res.json())
-      .then(data => setGmailConnected(data.authenticated))
-      .catch(() => setGmailConnected(false));
+    if (!isLocked) {
+      fetch("/api/auth/status")
+        .then(res => res.json())
+        .then(data => setGmailConnected(data.authenticated))
+        .catch(() => setGmailConnected(false));
+    }
     setIsLoaded(true);
-  }, []);
+  }, [isLocked]);
 
   // Lazily fetch the stored generic resume the first time generic mode is
   // opened (or on a later visit, once) rather than on every mount.
@@ -235,6 +272,7 @@ export default function ApplyPage() {
   };
 
   const handleGenerate = async () => {
+    if (isLocked) { setShowLoginPrompt(true); return; }
     if (!context) return;
     if (!companyName) {
       alert("Bitte füllen Sie den Firmennamen aus.");
@@ -484,6 +522,7 @@ export default function ApplyPage() {
   };
 
   const handleSendEmail = async () => {
+    if (isLocked) { setShowLoginPrompt(true); return; }
     if (!context || !activePdfUrl || !companyEmail) return;
     setIsSending(true);
     try {
@@ -512,6 +551,7 @@ export default function ApplyPage() {
   };
 
   const handleScheduleSend = async (scheduledAt: Date) => {
+    if (isLocked) { setShowLoginPrompt(true); return; }
     if (!context || !activePdfUrl || !companyEmail) return;
     setIsScheduling(true);
     setShowScheduleMenu(false);
@@ -584,6 +624,7 @@ export default function ApplyPage() {
   };
 
   const handleGenerateGenericResume = async () => {
+    if (isLocked) { setShowLoginPrompt(true); return; }
     if (!context) return;
     if (!context.resume_storage_path) {
       setToast({ message: "❌ Bitte laden Sie zuerst Ihre vollständigen Bewerbungsunterlagen unter Ausbildung hoch.", type: "error" });
@@ -637,6 +678,7 @@ export default function ApplyPage() {
   };
 
   const handleGenericFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLocked) { setShowLoginPrompt(true); return; }
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -785,6 +827,33 @@ export default function ApplyPage() {
   return (
     <>
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col">
+      {/* Locked preview banner — also the public description of the app and
+          its Google-data usage that OAuth verification expects to find on a
+          reachable page. */}
+      {isLocked && (
+        <div className="mb-3 sm:mb-4 shrink-0 rounded-2xl border border-blue-100 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/30 px-4 py-3 flex items-start sm:items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-sm">
+            <Lock className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              Vorschau — Sie sind nicht angemeldet
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Bewerbify erstellt aus Ihren Unterlagen ein individuelles Anschreiben und
+              versendet die fertige Bewerbung über Ihr eigenes Gmail-Konto. Formular gern
+              ausprobieren — zum Generieren und Versenden ist eine Anmeldung nötig.
+            </p>
+          </div>
+          <Link
+            href="/login"
+            className="hidden sm:flex items-center gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-md shadow-blue-500/20 active:scale-95"
+          >
+            <LogIn className="w-4 h-4" />
+            Anmelden
+          </Link>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 flex-1">
         
         {/* Left Form Panel */}
@@ -960,7 +1029,10 @@ export default function ApplyPage() {
                       )}
                     </button>
                     <button
-                      onClick={() => genericFileInputRef.current?.click()}
+                      onClick={() => {
+                        if (isLocked) { setShowLoginPrompt(true); return; }
+                        genericFileInputRef.current?.click();
+                      }}
                       disabled={isGeneratingGeneric || isUploadingGeneric}
                       className="flex-1 sm:flex-initial whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-700 active:scale-[0.98] disabled:opacity-70"
                     >
@@ -1125,6 +1197,51 @@ export default function ApplyPage() {
 
       </div>
     </div>
+
+    {/* Sign-in required — the form is free to explore, the actions are not */}
+    <AnimatePresence>
+      {showLoginPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+          onClick={() => setShowLoginPrompt(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-sm overflow-hidden"
+          >
+            <div className="p-6 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Anmeldung erforderlich</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Zum Erstellen und Versenden Ihrer Bewerbung benötigen Sie ein Konto. Bewerbify
+                nutzt Ihr Gmail-Konto ausschließlich, um Ihre eigene Bewerbung in Ihrem Namen
+                zu versenden.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+              <button
+                onClick={() => setShowLoginPrompt(false)}
+                className="flex-1 py-2.5 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                Abbrechen
+              </button>
+              <Link
+                href="/login"
+                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Anmelden
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
 
     {/* Toast Notification */}
     <AnimatePresence>

@@ -7,9 +7,9 @@ export default async function RootPage({
 }: {
   searchParams: Promise<{ code?: string }>;
 }) {
-  // Some Supabase project configs redirect the OAuth code to the Site URL
-  // (this root page) instead of the exact redirectTo passed at sign-in —
-  // handle it here too so sign-in still completes either way.
+  // Some Supabase project configs return the OAuth code to the Site URL (this
+  // page) instead of the exact redirectTo passed at sign-in — complete the
+  // sign-in here too so either configuration works.
   const { code } = await searchParams;
   if (code) {
     await handleOAuthCode(code);
@@ -18,8 +18,13 @@ export default async function RootPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Signed out visitors land on the apply page in a locked preview state
+  // rather than a login wall — they can look around and fill the form, and
+  // are prompted to sign in only when they try to generate or send. This
+  // also keeps the homepage publicly reachable, which Google's OAuth
+  // verification requires.
   if (!user) {
-    redirect("/login");
+    redirect("/v2/apply");
   }
 
   // Only count a context as "onboarded" once its documents actually made it to

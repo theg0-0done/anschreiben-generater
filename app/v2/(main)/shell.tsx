@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, ChevronDown, ChevronRight, Plus, PanelLeft, X, CalendarClock, User, Moon, Trash2 } from "lucide-react";
+import { LayoutDashboard, LogOut, ChevronDown, ChevronRight, Plus, PanelLeft, X, CalendarClock, User, Moon, Trash2, Lock, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getContexts, getActiveContextId, setActiveContextId, deleteContext, getProfile, JobContext, Profile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
@@ -11,9 +11,21 @@ import { getStoredTheme, applyTheme } from "@/lib/theme";
 import { rememberAccount } from "@/lib/rememberedAccounts";
 import { Logo } from "@/app/components/Logo";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardShell({
+  isSignedIn,
+  children,
+}: {
+  isSignedIn: boolean;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Signed-out visitors get the same shell in a locked state: the app is
+  // visible and the apply form is usable, but anything tied to an account
+  // (scheduled mails, the Ausbildung picker, the profile menu) is replaced
+  // by a prompt to sign in.
+  const isLocked = !isSignedIn;
 
   const [contexts, setContexts] = useState<JobContext[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -30,6 +42,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Nothing here is readable without a session — skip the round trips (and
+    // the console noise) entirely in the locked preview.
+    if (isLocked) return;
+
     getContexts().then(setContexts);
     getProfile().then((p) => {
       setProfile(p);
@@ -53,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       })
       .catch(() => {});
-  }, [pathname]);
+  }, [pathname, isLocked]);
 
   useEffect(() => {
     const theme = getStoredTheme();
@@ -176,6 +192,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <nav className="flex-1 px-4 py-4 space-y-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
+          // Only /v2/apply is open to signed-out visitors — the rest of the
+          // nav is shown but inert, so the app's shape stays visible.
+          const locked = isLocked && item.href !== "/v2/apply";
+          if (locked) {
+            return (
+              <div
+                key={item.name}
+                aria-disabled="true"
+                title="Melden Sie sich an, um Ihre geplanten Mails zu sehen."
+                className="flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm text-slate-300 dark:text-slate-600 cursor-not-allowed select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                  <span>{item.name}</span>
+                </div>
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+              </div>
+            );
+          }
           return (
             <Link
               key={item.name}
@@ -202,6 +237,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-auto" ref={accountMenuRef}>
+        {isLocked ? (
+          <div className="space-y-2">
+            <p className="px-1 text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+              Bewerbify schreibt Ihre Bewerbung und sendet sie über Ihr eigenes Gmail-Konto —
+              melden Sie sich an, um zu starten.
+            </p>
+            <Link
+              href="/login"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-md shadow-blue-500/20 active:scale-[0.98]"
+            >
+              <LogIn className="w-4 h-4" />
+              Anmelden
+            </Link>
+          </div>
+        ) : (
+        <>
         <button
           onClick={() => setAccountMenuOpen(v => !v)}
           className="w-full flex items-center gap-3 px-4 py-3 min-w-0 rounded-xl transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -254,6 +306,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </motion.div>
           )}
         </AnimatePresence>
+        </>
+        )}
 
         <div className="flex items-center justify-center gap-3 px-4 pt-2">
           <Link href="/terms" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
@@ -412,7 +466,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </h1>
 
           <div className="flex items-center gap-3 sm:gap-6 ml-auto shrink-0 pl-2">
-             {/* Context Dropdown */}
+             {isLocked ? (
+               <>
+                 <button
+                   type="button"
+                   disabled
+                   title="Melden Sie sich an, um eine Ausbildung zu wählen."
+                   /* Hidden on phones: it's inert anyway, and both it and the
+                      sign-in button don't fit next to the logo at 375px. */
+                   className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-4 py-2 rounded-xl font-medium text-sm border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+                 >
+                   <span className="whitespace-nowrap">Ausbildung</span>
+                   <Lock className="w-3.5 h-3.5 shrink-0" />
+                 </button>
+                 <Link
+                   href="/login"
+                   className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-semibold text-xs sm:text-sm transition-colors shadow-md shadow-blue-500/20 active:scale-95"
+                 >
+                   <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                   Anmelden
+                 </Link>
+               </>
+             ) : (
+             /* Context Dropdown */
              <div className="relative flex flex-col" ref={dropdownRef}>
                {/* Invisible block to force container width to the widest possible option. Hidden on mobile to prevent overflow. */}
                <div className="invisible h-0 overflow-hidden pointer-events-none hidden md:block" aria-hidden="true">
@@ -497,6 +573,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                  )}
                </AnimatePresence>
              </div>
+             )}
           </div>
         </header>
 

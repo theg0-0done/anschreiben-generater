@@ -28,7 +28,12 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith("/v2");
+  // /v2/apply is deliberately public: signed-out visitors get a locked
+  // preview of the app (form fillable, generating/sending prompts sign-in).
+  // Everything else under /v2 still requires a session, including direct
+  // URL access to /v2/scheduled, /v2/profile/* and /v2/onboarding.
+  const isPublicAppPreview = path === "/v2/apply";
+  const isProtected = path.startsWith("/v2") && !isPublicAppPreview;
   const isLoginPage = path === "/login";
 
   if (!user && isProtected) {
