@@ -827,33 +827,6 @@ export default function ApplyPage() {
   return (
     <>
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col">
-      {/* Locked preview banner — also the public description of the app and
-          its Google-data usage that OAuth verification expects to find on a
-          reachable page. */}
-      {isLocked && (
-        <div className="mb-3 sm:mb-4 shrink-0 rounded-2xl border border-blue-100 dark:border-blue-900/60 bg-blue-50/70 dark:bg-blue-950/30 px-4 py-3 flex items-start sm:items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-sm">
-            <Lock className="w-4 h-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Vorschau — Sie sind nicht angemeldet
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Bewerbify erstellt aus Ihren Unterlagen ein individuelles Anschreiben und
-              versendet die fertige Bewerbung über Ihr eigenes Gmail-Konto. Formular gern
-              ausprobieren — zum Generieren und Versenden ist eine Anmeldung nötig.
-            </p>
-          </div>
-          <Link
-            href="/login"
-            className="hidden sm:flex items-center gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-md shadow-blue-500/20 active:scale-95"
-          >
-            <LogIn className="w-4 h-4" />
-            Anmelden
-          </Link>
-        </div>
-      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 flex-1">
         
         {/* Left Form Panel */}

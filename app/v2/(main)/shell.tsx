@@ -238,20 +238,14 @@ export default function DashboardShell({
 
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-auto" ref={accountMenuRef}>
         {isLocked ? (
-          <div className="space-y-2">
-            <p className="px-1 text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-              Bewerbify schreibt Ihre Bewerbung und sendet sie über Ihr eigenes Gmail-Konto —
-              melden Sie sich an, um zu starten.
-            </p>
-            <Link
-              href="/login"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-md shadow-blue-500/20 active:scale-[0.98]"
-            >
-              <LogIn className="w-4 h-4" />
-              Anmelden
-            </Link>
-          </div>
+          <Link
+            href="/login"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-md shadow-blue-500/20 active:scale-[0.98]"
+          >
+            <LogIn className="w-4 h-4" />
+            Anmelden
+          </Link>
         ) : (
         <>
         <button
@@ -467,26 +461,15 @@ export default function DashboardShell({
 
           <div className="flex items-center gap-3 sm:gap-6 ml-auto shrink-0 pl-2">
              {isLocked ? (
-               <>
-                 <button
-                   type="button"
-                   disabled
-                   title="Melden Sie sich an, um eine Ausbildung zu wählen."
-                   /* Hidden on phones: it's inert anyway, and both it and the
-                      sign-in button don't fit next to the logo at 375px. */
-                   className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-4 py-2 rounded-xl font-medium text-sm border border-slate-200 dark:border-slate-700 cursor-not-allowed"
-                 >
-                   <span className="whitespace-nowrap">Ausbildung</span>
-                   <Lock className="w-3.5 h-3.5 shrink-0" />
-                 </button>
-                 <Link
-                   href="/login"
-                   className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-semibold text-xs sm:text-sm transition-colors shadow-md shadow-blue-500/20 active:scale-95"
-                 >
-                   <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                   Anmelden
-                 </Link>
-               </>
+               <button
+                 type="button"
+                 disabled
+                 title="Melden Sie sich an, um eine Ausbildung zu wählen."
+                 className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-medium text-xs sm:text-sm border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+               >
+                 <span className="whitespace-nowrap">Ausbildung</span>
+                 <Lock className="w-3.5 h-3.5 shrink-0" />
+               </button>
              ) : (
              /* Context Dropdown */
              <div className="relative flex flex-col" ref={dropdownRef}>
