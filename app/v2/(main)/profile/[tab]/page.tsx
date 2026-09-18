@@ -342,7 +342,7 @@ export default function ProfilePage() {
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center gap-2 text-sm font-medium">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-2xl flex items-center gap-2 text-sm font-medium">
                 <CheckCircle className="w-4 h-4 shrink-0" />
                 {successMsg}
               </div>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-full flex items-center gap-2 text-sm font-medium">
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-2xl flex items-center gap-2 text-sm font-medium">
                 <XCircle className="w-4 h-4 shrink-0" />
                 {errorMsg}
               </div>
@@ -558,7 +558,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsCvDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsCvDragging)}
                     onDrop={(e) => handleDrop(e, "cv", setIsCvDragging)}
-                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isCvDragging ? "border-purple-500 bg-purple-50/50 dark:bg-purple-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -595,7 +595,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsResumeDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsResumeDragging)}
                     onDrop={(e) => handleDrop(e, "resume", setIsResumeDragging)}
-                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isResumeDragging ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -632,7 +632,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsGenericDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsGenericDragging)}
                     onDrop={(e) => handleDrop(e, "generic", setIsGenericDragging)}
-                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isGenericDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -671,7 +671,7 @@ export default function ProfilePage() {
                     {isTemplateSaved ? <><Check className="w-4 h-4" /> Gespeichert</> : "Speichern"}
                   </button>
                 </div>
-                <div className="flex-1 bg-white dark:bg-slate-900 rounded-full overflow-hidden relative border border-slate-200 dark:border-slate-700 flex flex-col min-h-[350px]">
+                <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex flex-col min-h-[350px]">
                   {isGeneratingTemplate && (
                     <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                       <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />

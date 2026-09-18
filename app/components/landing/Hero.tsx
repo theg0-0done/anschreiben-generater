@@ -4,7 +4,7 @@ import { Fragment, useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
-import { EASE, DURATION, wordReveal, fadeUp, stagger } from "./motion";
+import { wordReveal, fadeUp, stagger } from "./motion";
 
 const HEADLINE = ["Deine", "Bewerbung.", "In", "60", "Sekunden", "unterwegs."];
 
@@ -49,8 +49,8 @@ export function Hero({ revealed, appHref }: { revealed: boolean; appHref: string
           preload="metadata"
         />
         {/* Legibility scrims — vertical for the copy, plus a warm vignette */}
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/55 to-slate-950" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-transparent to-slate-950/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/55 via-slate-950/20 to-slate-950/90" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/20 to-transparent" />
       </motion.div>
 
       {/* ── Content ──────────────────────────────────────────────────────── */}
@@ -105,7 +105,7 @@ export function Hero({ revealed, appHref }: { revealed: boolean; appHref: string
             </Link>
             <Link
               href={appHref}
-              className="group inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300"
+              className="group inline-flex items-center justify-center gap-2 rounded-full border border-current px-7 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300"
             >
               <Play className="h-4 w-4 fill-current transition-transform duration-300 group-hover:scale-110" />
               Ohne Anmeldung ansehen
@@ -114,22 +114,6 @@ export function Hero({ revealed, appHref }: { revealed: boolean; appHref: string
         </motion.div>
       </motion.div>
 
-      {/* Scroll cue */}
-      <motion.a
-        href="#so-funktionierts"
-        aria-label="Weiter zu: So funktioniert's"
-        initial={{ opacity: 0 }}
-        animate={revealed ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ delay: 1.2, duration: DURATION.base, ease: EASE }}
-        className="absolute inset-x-0 bottom-6 mx-auto hidden h-10 w-6 justify-center rounded-full border border-white/25 sm:flex"
-      >
-        <motion.span
-          aria-hidden
-          animate={shouldReduce ? undefined : { y: [6, 16, 6], opacity: [1, 0.2, 1] }}
-          transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut" }}
-          className="mt-1.5 block h-1.5 w-1 rounded-full bg-white/80"
-        />
-      </motion.a>
     </section>
   );
 }

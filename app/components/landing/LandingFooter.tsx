@@ -58,9 +58,9 @@ export function FinalCta() {
             aria-hidden
             fill
             sizes="100vw"
-            className="object-cover opacity-40"
+            className="object-cover opacity-70"
           />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-slate-950/55 via-slate-950/80 to-slate-950" />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/55 to-slate-950/75" />
 
           <div className="relative">
             <motion.h2
@@ -83,7 +83,7 @@ export function FinalCta() {
               </Link>
               <Link
                 href="/v2/apply"
-                className="inline-flex w-full items-center justify-center rounded-full px-6 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full border border-current px-7 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300 sm:w-auto"
               >
                 Erst ansehen
               </Link>
