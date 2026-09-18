@@ -8,6 +8,7 @@ import {
   deleteScheduledEmail,
   getScheduledEmailPdf,
 } from "@/lib/scheduled-emails";
+import { parseAttachmentRef, materializeForSchedule } from "@/lib/attachments";
 
 export async function POST(request: NextRequest) {
   const t0 = performance.now();
@@ -20,19 +21,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
     }
 
-    const { to, subject, body, pdfStoragePath, fileName, scheduledAt, metadata } = await request.json();
+    const payload = await request.json();
+    const { to, subject, body, fileName, scheduledAt, metadata } = payload;
 
-    if (!to || !subject || !body || !pdfStoragePath || !fileName || !scheduledAt) {
+    if (!to || !subject || !body || !fileName || !scheduledAt) {
       return NextResponse.json(
-        { error: "Fehlende Felder: to, subject, body, pdfStoragePath, fileName und scheduledAt erforderlich." },
+        { error: "Fehlende Felder: to, subject, body, fileName und scheduledAt erforderlich." },
         { status: 400 }
       );
     }
 
-    // The client uploads directly to Storage under its own user_id folder —
-    // reject anything that doesn't match, so nobody can point at someone
-    // else's (or an arbitrary) storage path.
-    if (typeof pdfStoragePath !== "string" || !pdfStoragePath.startsWith(`${user.id}/`)) {
+    const attachment = parseAttachmentRef(payload, user.id);
+    if (!attachment) {
       return NextResponse.json({ error: "Ungültiger Dateipfad." }, { status: 400 });
     }
 
@@ -49,6 +49,14 @@ export async function POST(request: NextRequest) {
         { error: "Das geplante Sendedatum muss in der Zukunft liegen." },
         { status: 400 }
       );
+    }
+
+    // A scheduled send may go out days from now, by which time the generic
+    // resume it points at could have been replaced, so the row gets its own
+    // snapshot rather than a live reference.
+    const pdfStoragePath = await materializeForSchedule(attachment, user.id);
+    if (!pdfStoragePath) {
+      return NextResponse.json({ error: "Anhang konnte nicht gesichert werden." }, { status: 502 });
     }
 
     const t2 = performance.now();

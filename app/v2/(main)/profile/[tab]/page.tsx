@@ -319,7 +319,7 @@ export default function ProfilePage() {
           <Link
             key={t.id}
             href={`/v2/profile/${t.id}`}
-            className={`shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+            className={`shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
               tab === t.id
                 ? "bg-blue-600 text-white shadow-sm"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
@@ -331,7 +331,7 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 sm:p-6 md:p-8 flex flex-col">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 sm:p-6 md:p-8 flex flex-col">
 
         <AnimatePresence>
           {successMsg && (
@@ -342,7 +342,7 @@ export default function ProfilePage() {
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-xl flex items-center gap-2 text-sm font-medium">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center gap-2 text-sm font-medium">
                 <CheckCircle className="w-4 h-4 shrink-0" />
                 {successMsg}
               </div>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-sm font-medium">
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 rounded-full flex items-center gap-2 text-sm font-medium">
                 <XCircle className="w-4 h-4 shrink-0" />
                 {errorMsg}
               </div>
@@ -406,7 +406,7 @@ export default function ProfilePage() {
                     value={profile.first_name ?? ""}
                     onChange={e => setProfile({...profile, first_name: e.target.value})}
                     required
-                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
                 <div>
@@ -416,7 +416,7 @@ export default function ProfilePage() {
                     value={profile.last_name ?? ""}
                     onChange={e => setProfile({...profile, last_name: e.target.value})}
                     required
-                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -429,7 +429,7 @@ export default function ProfilePage() {
                     value={profile.email ?? ""}
                     onChange={e => { setProfile({...profile, email: e.target.value}); if (userEmailError) setUserEmailError(""); }}
                     onBlur={() => { if (profile.email && !isValidEmail(profile.email)) setUserEmailError(EMAIL_ERROR_MESSAGE); }}
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-full focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
                       userEmailError ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400" : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
                     }`}
                   />
@@ -442,7 +442,7 @@ export default function ProfilePage() {
                     value={profile.phone ?? ""}
                     onChange={e => setProfile({...profile, phone: e.target.value})}
                     required
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -456,7 +456,7 @@ export default function ProfilePage() {
                     value={profile.street_house ?? ""}
                     onChange={e => setProfile({...profile, street_house: e.target.value})}
                     required
-                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
                 <div>
@@ -466,7 +466,7 @@ export default function ProfilePage() {
                     value={profile.postal_city ?? ""}
                     onChange={e => setProfile({...profile, postal_city: e.target.value})}
                     required
-                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -481,7 +481,7 @@ export default function ProfilePage() {
                   value={profile.personal_links ?? ""}
                   onChange={e => setProfile({...profile, personal_links: e.target.value})}
                   placeholder="z.B. GitHub, LinkedIn, Portfolio"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -490,7 +490,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
               >
                 {loading ? (<><RefreshCcw className="w-5 h-5 animate-spin" /> Speichern...</>) : "Änderungen speichern"}
               </button>
@@ -501,13 +501,13 @@ export default function ProfilePage() {
         {/* ── Ausbildung ───────────────────────────────────────────────── */}
         {tab === "ausbildung" && (
           <div className="space-y-6">
-            <form onSubmit={handleSaveAusbildungInfo} className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6">
+            <form onSubmit={handleSaveAusbildungInfo} className="bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Ausbildungsdetails</h3>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors disabled:opacity-70 flex items-center gap-2"
+                  className="px-5 py-2 rounded-full text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors disabled:opacity-70 flex items-center gap-2"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Speichern
@@ -521,7 +521,7 @@ export default function ProfilePage() {
                     value={context.job_title}
                     onChange={e => setContext({...context, job_title: e.target.value})}
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
                 <div>
@@ -536,7 +536,7 @@ export default function ProfilePage() {
                       if (!coverLetterPageInput || parseInt(coverLetterPageInput, 10) < 1) setCoverLetterPageInput("1");
                     }}
                     required
-                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -544,10 +544,10 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
               <div className="lg:col-span-1 flex flex-col gap-6">
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Lebenslauf</h3>
-                    <label htmlFor="cv-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
+                    <label htmlFor="cv-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
                       ändern
                     </label>
                     <input id="cv-upload-input" type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileInput(e, "cv")} />
@@ -558,7 +558,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsCvDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsCvDragging)}
                     onDrop={(e) => handleDrop(e, "cv", setIsCvDragging)}
-                    className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isCvDragging ? "border-purple-500 bg-purple-50/50 dark:bg-purple-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -581,10 +581,10 @@ export default function ProfilePage() {
                   </label>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Komplette Unterlagen</h3>
-                    <label htmlFor="resume-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
+                    <label htmlFor="resume-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
                       ändern
                     </label>
                     <input id="resume-upload-input" type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileInput(e, "resume")} />
@@ -595,7 +595,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsResumeDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsResumeDragging)}
                     onDrop={(e) => handleDrop(e, "resume", setIsResumeDragging)}
-                    className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isResumeDragging ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -618,10 +618,10 @@ export default function ProfilePage() {
                   </label>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Allgemeine Bewerbung</h3>
-                    <label htmlFor="generic-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-xl text-sm font-medium transition-colors">
+                    <label htmlFor="generic-upload-input" className="cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-full text-sm font-medium transition-colors">
                       ändern
                     </label>
                     <input id="generic-upload-input" type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileInput(e, "generic")} />
@@ -632,7 +632,7 @@ export default function ProfilePage() {
                     onDragEnter={(e) => handleDragEnter(e, setIsGenericDragging)}
                     onDragLeave={(e) => handleDragLeave(e, setIsGenericDragging)}
                     onDrop={(e) => handleDrop(e, "generic", setIsGenericDragging)}
-                    className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
+                    className={`rounded-full border-2 border-dashed flex flex-col items-center justify-center p-6 min-h-[140px] transition-all cursor-pointer ${
                       isGenericDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                   >
@@ -649,20 +649,20 @@ export default function ProfilePage() {
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
                         <FileTextIcon className="w-8 h-8 opacity-50" />
-                        <span className="text-sm text-center px-2">Für Massenbewerbungen ohne Firmenbezug — auch im Bewerbungsbereich generierbar</span>
+                        <span className="text-sm text-center px-2">Für Massenbewerbungen ohne Firmenbezug, auch im Bewerbungsbereich generierbar</span>
                       </div>
                     )}
                   </label>
                 </div>
               </div>
 
-              <div className="lg:col-span-2 flex flex-col bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6">
+              <div className="lg:col-span-2 flex flex-col bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Anschreiben-Vorlage</h3>
                   <button
                     onClick={handleSaveTemplate}
                     disabled={template === originalTemplate || isGeneratingTemplate}
-                    className={`px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
                       isTemplateSaved ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" :
                       template === originalTemplate || isGeneratingTemplate ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed" :
                       "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
@@ -671,7 +671,7 @@ export default function ProfilePage() {
                     {isTemplateSaved ? <><Check className="w-4 h-4" /> Gespeichert</> : "Speichern"}
                   </button>
                 </div>
-                <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl overflow-hidden relative border border-slate-200 dark:border-slate-700 flex flex-col min-h-[350px]">
+                <div className="flex-1 bg-white dark:bg-slate-900 rounded-full overflow-hidden relative border border-slate-200 dark:border-slate-700 flex flex-col min-h-[350px]">
                   {isGeneratingTemplate && (
                     <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                       <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
@@ -698,9 +698,9 @@ export default function ProfilePage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Betreff</label>
               <input
                 type="text"
-                value={context.email_subject || `Bewerbung als ${context.job_title} – ${profile.first_name} ${profile.last_name}`}
+                value={context.email_subject || `Bewerbung als ${context.job_title}, ${profile.first_name} ${profile.last_name}`}
                 onChange={e => setContext({...context, email_subject: e.target.value})}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
 
@@ -715,7 +715,7 @@ export default function ProfilePage() {
               <textarea
                 value={context.email_body || `[Salutation],\n\nhiermit bewerbe ich mich auf die Stelle als [JobTitle].\nErbeten finden Sie meine Bewerbungsunterlagen im Anhang.\n\nMit freundlichen Grüßen\n[FirstName] [LastName]\n[Phone]\n[Email]`}
                 onChange={e => setContext({...context, email_body: e.target.value})}
-                className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+                className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
               />
             </div>
 
@@ -723,7 +723,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveEmailTemplate}
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
               >
                 {loading ? (<><RefreshCcw className="w-5 h-5 animate-spin" /> Speichern...</>) : "Vorlage speichern"}
               </button>

@@ -3,7 +3,7 @@ import { ArrowLeft, Shield, Lock, Database, Mail, Eye, UserCheck, Sparkles } fro
 import { Logo } from "@/app/components/Logo";
 
 export const metadata = {
-  title: "Datenschutzerklärung – Bewerbify",
+  title: "Datenschutzerklärung | Bewerbify",
   description: "Datenschutzerklärung für die Bewerbify-Plattform.",
 };
 
@@ -133,7 +133,7 @@ export default function PrivacyPage() {
               <Bullets
                 color="bg-emerald-400"
                 items={[
-                  "Verwendung nur, um eine von Ihnen erstellte und freigegebene Bewerbung zu versenden – sofort oder zum geplanten Zeitpunkt",
+                  "Verwendung nur, um eine von Ihnen erstellte und freigegebene Bewerbung zu versenden, sofort oder zum geplanten Zeitpunkt",
                   "Wir lesen, durchsuchen und speichern keine vorhandenen E-Mails",
                   "Keine Weitergabe von Google-Nutzerdaten an Dritte",
                   "Keine Nutzung von Google-Nutzerdaten für Werbung",
@@ -229,10 +229,10 @@ export default function PrivacyPage() {
               <Bullets
                 color="bg-amber-400"
                 items={[
-                  "Vercel – Hosting der Anwendung",
-                  "Supabase – Datenbank, Authentifizierung und Dateispeicher",
-                  "Anthropic – Erzeugung der Anschreiben-Texte",
-                  "Google – Versand der E-Mails über Ihr Gmail-Konto",
+                  "Vercel: Hosting der Anwendung",
+                  "Supabase: Datenbank, Authentifizierung und Dateispeicher",
+                  "Anthropic: Erzeugung der Anschreiben-Texte",
+                  "Google: Versand der E-Mails über Ihr Gmail-Konto",
                 ]}
               />
               <p className="mt-3 text-slate-600 leading-relaxed">
@@ -311,10 +311,10 @@ export default function PrivacyPage() {
               <p className="text-slate-600 leading-relaxed">
                 Für Anfragen zum Datenschutz oder zur Löschung Ihres Kontos:{" "}
                 <a
-                  href="mailto:bosssaid2005@gmail.com"
+                  href="mailto:contact@fatehsaid.com"
                   className="text-blue-600 hover:text-blue-700 font-medium underline underline-offset-2"
                 >
-                  bosssaid2005@gmail.com
+                  contact@fatehsaid.com
                 </a>
               </p>
             </section>

@@ -91,7 +91,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-left">{error}</div>
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-2xl text-left">{error}</div>
         )}
 
         {accounts.length > 0 && (
@@ -106,12 +106,12 @@ export default function LoginPage() {
                   transition={{ duration: 0.15 }}
                   className="overflow-hidden"
                 >
-                  <div className="w-full flex items-center gap-1 p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors group">
+                  <div className="w-full flex items-center gap-1 p-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors group">
                     <button
                       type="button"
                       onClick={() => handleGoogleSignIn(acc.email)}
                       disabled={isLoading}
-                      className="flex-1 min-w-0 flex items-center gap-3 p-1 disabled:opacity-60"
+                      className="flex-1 min-w-0 flex items-center gap-3 p-1 pl-1 rounded-full disabled:opacity-60"
                     >
                       {acc.avatarUrl ? (
                         <img src={acc.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
@@ -133,7 +133,7 @@ export default function LoginPage() {
                         onClick={(e) => handleForget(e, acc.email)}
                         disabled={isLoading}
                         title="Konto entfernen"
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0 disabled:opacity-0"
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0 disabled:opacity-40"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -154,7 +154,7 @@ export default function LoginPage() {
         <button
           onClick={() => handleGoogleSignIn()}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-70 text-slate-700 px-6 py-3 rounded-xl font-medium transition-all shadow-sm active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-3 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-70 text-slate-700 px-6 py-3.5 rounded-full font-medium transition-all shadow-sm active:scale-[0.98]"
         >
           {isLoading && !loadingEmail ? (
             <Loader2 className="w-5 h-5 animate-spin text-slate-400" />

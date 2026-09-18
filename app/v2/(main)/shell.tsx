@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, ChevronDown, ChevronRight, Plus, PanelLeft, X, CalendarClock, User, Moon, Trash2, Lock, LogIn } from "lucide-react";
+import { LayoutDashboard, LogOut, ChevronDown, ChevronRight, Plus, PanelLeft, X, CalendarClock, User, Moon, Trash2, Lock, LogIn, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getContexts, getActiveContextId, setActiveContextId, deleteContext, getProfile, JobContext, Profile } from "@/lib/data";
 import { createClient } from "@/lib/supabase/client";
@@ -156,7 +156,11 @@ export default function DashboardShell({
     }
   };
 
+  // "Startseite" is the way back out to the marketing page; / no longer
+  // bounces signed-in visitors into the app, so the two are reachable
+  // from each other in both directions.
   const navigation = [
+    { name: "Startseite", href: "/", icon: Home },
     { name: "Neue Bewerbung", href: "/v2/apply", icon: LayoutDashboard },
     { name: "Geplante Mails", href: "/v2/scheduled", icon: CalendarClock },
   ];
@@ -178,7 +182,7 @@ export default function DashboardShell({
   const SidebarContent = () => (
     <>
       <div className="p-6 flex items-center justify-between">
-        <Link href="/v2/apply" className="flex items-center gap-2 group">
+        <Link href="/" className="flex items-center gap-2 group">
           <Logo className="text-3xl" />
         </Link>
         <button
@@ -303,15 +307,6 @@ export default function DashboardShell({
         </>
         )}
 
-        <div className="flex items-center justify-center gap-3 px-4 pt-2">
-          <Link href="/terms" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            Nutzungsbedingungen
-          </Link>
-          <span className="text-slate-200 dark:text-slate-700 text-xs">·</span>
-          <Link href="/privacy" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            Datenschutz
-          </Link>
-        </div>
       </div>
     </>
   );
@@ -450,7 +445,7 @@ export default function DashboardShell({
             >
               <PanelLeft className="w-6 h-6" />
             </button>
-            <Link href="/v2/apply" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <Logo className="text-2xl" />
             </Link>
           </div>
@@ -536,7 +531,7 @@ export default function DashboardShell({
                            <button
                              onClick={() => setDeleteConfirmContext(c)}
                              title="Ausbildung löschen"
-                             className="p-2 mr-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                             className="p-2 mr-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-full transition-colors shrink-0"
                            >
                              <Trash2 className="w-3.5 h-3.5" />
                            </button>

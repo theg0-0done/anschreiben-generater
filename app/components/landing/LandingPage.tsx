@@ -76,20 +76,27 @@ function FieldMarquee() {
   );
 }
 
-export function LandingPage() {
+export function LandingPage({
+  isSignedIn,
+  appHref,
+}: {
+  isSignedIn: boolean;
+  /** Where "into the app" goes: the apply page, or onboarding if not set up yet. */
+  appHref: string;
+}) {
   // The hero holds its entrance until the intro curtain is on its way out, so
   // the two don't play over each other.
   const [revealed, setRevealed] = useState(false);
   const handleDone = useCallback(() => setRevealed(true), []);
 
   return (
-    <div className="landing-type min-h-screen scroll-smooth bg-[#f8fafc] font-sans antialiased dark:bg-slate-950">
+    <div className="landing-type min-h-screen bg-[#f8fafc] font-sans antialiased dark:bg-slate-950">
       <Preloader onDone={handleDone} />
       <ScrollProgress />
-      <LandingNav revealed={revealed} />
+      <LandingNav revealed={revealed} isSignedIn={isSignedIn} />
 
       <main>
-        <Hero revealed={revealed} />
+        <Hero revealed={revealed} appHref={appHref} />
         <FieldMarquee />
         <HowItWorks />
         <About />

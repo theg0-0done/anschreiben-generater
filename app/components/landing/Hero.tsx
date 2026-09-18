@@ -3,18 +3,12 @@
 import { Fragment, useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
-import { ArrowRight, Play, Sparkles, ShieldCheck, CalendarClock } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { EASE, DURATION, wordReveal, fadeUp, stagger } from "./motion";
 
 const HEADLINE = ["Deine", "Bewerbung.", "In", "60", "Sekunden", "unterwegs."];
 
-const CHIPS = [
-  { icon: Sparkles, label: "Individuell pro Unternehmen" },
-  { icon: ShieldCheck, label: "Versand über dein Gmail" },
-  { icon: CalendarClock, label: "Versand planbar" },
-];
-
-export function Hero({ revealed }: { revealed: boolean }) {
+export function Hero({ revealed, appHref }: { revealed: boolean; appHref: string }) {
   const shouldReduce = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -32,6 +26,7 @@ export function Hero({ revealed }: { revealed: boolean }) {
   return (
     <section
       ref={sectionRef}
+      data-nav-tone="dark"
       className="relative flex min-h-[100svh] flex-col justify-center overflow-hidden bg-slate-950 pb-20 pt-28 sm:pb-28 sm:pt-32"
     >
       {/* ── Background video ─────────────────────────────────────────────── */}
@@ -68,18 +63,7 @@ export function Hero({ revealed }: { revealed: boolean }) {
           animate={revealed ? "show" : "hidden"}
           variants={stagger(0.15, 0.09)}
         >
-          {/* Eyebrow */}
-          <motion.div variants={fadeUp} className="mb-6 flex">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-200 backdrop-blur-sm">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-400" />
-              </span>
-              KI-Bewerbungen für deine Ausbildung
-            </span>
-          </motion.div>
-
-          {/* Headline — each word rides up out of its own clipping mask */}
+          {/* Headline: each word rides up out of its own clipping mask */}
           <h1 className="max-w-3xl text-[2.6rem] font-extrabold leading-[1.02] tracking-[-0.03em] text-white sm:text-6xl lg:text-[4.5rem]">
             {HEADLINE.map((word, i) => (
               // The trailing {" "} is a real space, so selecting or reading the
@@ -107,41 +91,26 @@ export function Hero({ revealed }: { revealed: boolean }) {
           >
             Bewerbify schreibt dein Anschreiben, fügt es zu fertigen Bewerbungsunterlagen
             zusammen und verschickt sie über <strong className="font-semibold text-white">dein eigenes
-            Gmail-Konto</strong> — individuell für jedes Unternehmen.
+            Gmail-Konto</strong>, individuell für jedes Unternehmen.
           </motion.p>
 
           {/* Calls to action */}
-          <motion.div variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:items-center">
+          <motion.div variants={fadeUp} className="mt-8 flex flex-col gap-2 sm:mt-10 sm:flex-row sm:items-center sm:gap-4">
             <Link
               href="/login"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-xl shadow-blue-600/30 transition-all hover:bg-blue-500 hover:shadow-blue-500/40 active:scale-[0.98]"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-500 active:scale-[0.98]"
             >
               Kostenlos starten
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <Link
-              href="/v2/apply"
-              className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-7 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 active:scale-[0.98]"
+              href={appHref}
+              className="group inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300"
             >
-              <Play className="h-4 w-4 fill-current" />
+              <Play className="h-4 w-4 fill-current transition-transform duration-300 group-hover:scale-110" />
               Ohne Anmeldung ansehen
             </Link>
           </motion.div>
-
-          {/* Value chips — subtle idle float so the section is never fully still */}
-          <motion.ul variants={fadeUp} className="mt-10 flex flex-wrap gap-2 sm:mt-14 sm:gap-3">
-            {CHIPS.map((chip, i) => (
-              <motion.li
-                key={chip.label}
-                animate={shouldReduce ? undefined : { y: [0, -5, 0] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.6 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.07] px-3.5 py-2.5 text-xs font-medium text-slate-200 backdrop-blur-md sm:text-sm"
-              >
-                <chip.icon className="h-4 w-4 shrink-0 text-blue-300" />
-                {chip.label}
-              </motion.li>
-            ))}
-          </motion.ul>
         </motion.div>
       </motion.div>
 

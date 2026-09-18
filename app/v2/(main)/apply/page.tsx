@@ -123,11 +123,13 @@ export default function ApplyPage() {
   };
 
   // Kick the upload off the moment a PDF is ready, not when Send is pressed.
+  // Generic mode is excluded: that PDF already lives in Storage, so the server
+  // reads it from there and there is nothing to pre-upload.
   useEffect(() => {
-    if (!activePdfUrl) return;
+    if (isGenericMode || !activePdfUrl) return;
     if (attachmentUploadRef.current?.url === activePdfUrl) return;
     startAttachmentUpload(activePdfUrl);
-  }, [activePdfUrl]);
+  }, [activePdfUrl, isGenericMode]);
 
   // Load context and restored state
   useEffect(() => {
@@ -393,10 +395,17 @@ export default function ApplyPage() {
     }
   }, [activePdfUrl]);
 
-  const handleDownload = () => {
+  /**
+   * iOS Safari ignores the `download` attribute on a blob: URL, so the old
+   * anchor click did nothing at all on an iPhone. It also wants the anchor to
+   * actually be in the document before a synthetic click counts.
+   *
+   * Order of preference: the share sheet (keeps the file name and offers
+   * "Save to Files"), then a real anchor, then opening the PDF in a new tab so
+   * the viewer's own share button can save it.
+   */
+  const handleDownload = async () => {
     if (!activePdfUrl) return;
-    const a = document.createElement("a");
-    a.href = activePdfUrl;
 
     const filename = isGenericMode
       ? (context?.generic_resume_file_name || genericResumeFileName())
@@ -404,8 +413,35 @@ export default function ApplyPage() {
         ? `Anschreiben_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`
         : `Bewerbungsunterlagen_${companyName.replace(/\s+/g, '_')}_${profile?.first_name}_${profile?.last_name}.pdf`;
 
+    // iPadOS reports itself as a Mac, so touch support is part of the test.
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+      try {
+        const blob = await (await fetch(activePdfUrl)).blob();
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+      } catch (err) {
+        // Cancelling the share sheet throws too, so don't fall through to the
+        // new tab in that case.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+      window.open(activePdfUrl, "_blank", "noopener");
+      return;
+    }
+
+    const a = document.createElement("a");
+    a.href = activePdfUrl;
     a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
     a.click();
+    a.remove();
   };
 
   const handleReset = () => {
@@ -430,11 +466,7 @@ export default function ApplyPage() {
   const clearAfterSend = () => {
     setCompanyEmail("");
     setCompanyEmailError("");
-    if (isGenericMode) {
-      // Mass-apply reuses the same PDF for every company — get the next
-      // copy uploading immediately so the next send is instant too.
-      if (activePdfUrl) startAttachmentUpload(activePdfUrl);
-    } else {
+    if (!isGenericMode) {
       setCompanyName("");
       setContactSalutation("");
       setContactPerson("");
@@ -498,11 +530,22 @@ export default function ApplyPage() {
   // sending/scheduling a multi-MB file take up to 40s instead of 1-2s.
   const buildAttachmentPayload = async () => {
     if (!context || !activePdfUrl || !companyEmail) return null;
+    const { subject, body, fileName } = buildEmailContent();
+    const base = { to: companyEmail, subject, body, fileName };
+
+    // A generic application is already sitting in Storage from the day it was
+    // created. Uploading those same megabytes again on every send is what made
+    // the attachment take twenty seconds to "prepare"; naming the stored copy
+    // instead costs nothing and the server resolves it.
+    if (isGenericMode) {
+      return { ...base, genericContextId: context.id };
+    }
+
     const t0 = performance.now();
 
-    // Normally already finished in the background — this just picks up the
-    // result. Only falls back to uploading now if the pre-upload never ran
-    // or failed (e.g. a dropped connection).
+    // Normally already finished in the background, so this just picks up the
+    // result. Only falls back to uploading now if the pre-upload never ran or
+    // failed, for instance on a dropped connection.
     const cached = attachmentUploadRef.current;
     let pdfStoragePath: string;
     try {
@@ -513,12 +556,11 @@ export default function ApplyPage() {
     }
     console.log(`[send] attachment ready after ${(performance.now() - t0).toFixed(0)}ms`);
 
-    // This copy now belongs to the sent/scheduled mail — queue a fresh one
-    // for the next application rather than pointing two rows at one file.
+    // This copy now belongs to the sent or scheduled mail, so queue a fresh
+    // one for the next application rather than pointing two rows at one file.
     attachmentUploadRef.current = null;
 
-    const { subject, body, fileName } = buildEmailContent();
-    return { to: companyEmail, subject, body, pdfStoragePath, fileName };
+    return { ...base, pdfStoragePath };
   };
 
   // What the scheduled-mails list shows for this application. Sent and
@@ -561,11 +603,11 @@ export default function ApplyPage() {
         throw new Error(data.error || "Fehler beim Senden");
       }
 
-      setToast({ message: "✅ E-Mail erfolgreich gesendet!", type: "success" });
+      setToast({ message: "E-Mail erfolgreich gesendet!", type: "success" });
       clearAfterSend();
     } catch (err: any) {
       console.error("Send email error:", err);
-      setToast({ message: `❌ ${err.message || "Fehler beim Senden. Bitte erneut versuchen."}`, type: "error" });
+      setToast({ message: `${err.message || "Fehler beim Senden. Bitte erneut versuchen."}`, type: "error" });
     } finally {
       setIsSending(false);
     }
@@ -597,11 +639,11 @@ export default function ApplyPage() {
       }
 
       const fmt = scheduledAt.toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-      setToast({ message: `⏰ E-Mail geplant für ${fmt}`, type: "success" });
+      setToast({ message: `E-Mail geplant für ${fmt}`, type: "success" });
       clearAfterSend();
     } catch (err: any) {
       console.error("Schedule email error:", err);
-      setToast({ message: `❌ ${err.message || "Fehler beim Planen."}`, type: "error" });
+      setToast({ message: `${err.message || "Fehler beim Planen."}`, type: "error" });
     } finally {
       setIsScheduling(false);
     }
@@ -627,7 +669,7 @@ export default function ApplyPage() {
     if (isLocked) { setShowLoginPrompt(true); return; }
     if (!context) return;
     if (!context.resume_storage_path) {
-      setToast({ message: "❌ Bitte laden Sie zuerst Ihre vollständigen Bewerbungsunterlagen unter Ausbildung hoch.", type: "error" });
+      setToast({ message: "Bitte laden Sie zuerst Ihre vollständigen Bewerbungsunterlagen unter Ausbildung hoch.", type: "error" });
       return;
     }
     setIsGeneratingGeneric(true);
@@ -668,10 +710,10 @@ export default function ApplyPage() {
       const mergedBlob = new Blob([mergedBytes as any], { type: "application/pdf" });
 
       await saveGenericResume(mergedBlob, genericResumeFileName());
-      setToast({ message: "✅ Allgemeine Bewerbung erfolgreich erstellt!", type: "success" });
+      setToast({ message: "Allgemeine Bewerbung erfolgreich erstellt!", type: "success" });
     } catch (err) {
       console.error(err);
-      setToast({ message: "❌ Fehler bei der Erstellung der allgemeinen Bewerbung.", type: "error" });
+      setToast({ message: "Fehler bei der Erstellung der allgemeinen Bewerbung.", type: "error" });
     } finally {
       setIsGeneratingGeneric(false);
     }
@@ -683,16 +725,16 @@ export default function ApplyPage() {
     e.target.value = "";
     if (!file) return;
     if (file.type !== "application/pdf") {
-      setToast({ message: "❌ Bitte laden Sie eine gültige PDF-Datei hoch.", type: "error" });
+      setToast({ message: "Bitte laden Sie eine gültige PDF-Datei hoch.", type: "error" });
       return;
     }
     setIsUploadingGeneric(true);
     try {
       await saveGenericResume(file, file.name);
-      setToast({ message: "✅ Allgemeine Bewerbung erfolgreich hochgeladen!", type: "success" });
+      setToast({ message: "Allgemeine Bewerbung erfolgreich hochgeladen!", type: "success" });
     } catch (err) {
       console.error(err);
-      setToast({ message: "❌ Upload fehlgeschlagen. Bitte versuchen Sie es erneut.", type: "error" });
+      setToast({ message: "Upload fehlgeschlagen. Bitte versuchen Sie es erneut.", type: "error" });
     } finally {
       setIsUploadingGeneric(false);
     }
@@ -719,8 +761,10 @@ export default function ApplyPage() {
   // Shared Send + Schedule control — rendered next to "Herunterladen" for a
   // per-company application, or under the email field in generic mode.
   const renderSendScheduleActions = (fullWidth = false) => {
-    if (!(gmailConnected && effectiveMode === "full-resume" && companyEmail)) return null;
-    const emailInvalid = !isValidEmail(companyEmail);
+    if (!(gmailConnected && effectiveMode === "full-resume")) return null;
+    // Always on screen: a button that only appears once the address parses
+    // leaves people wondering whether sending is possible at all.
+    const emailInvalid = !companyEmail.trim() || !isValidEmail(companyEmail);
     return (
       <div className={`relative flex ${fullWidth ? "w-full" : ""}`} ref={scheduleMenuRef}>
         {/* Send now */}
@@ -728,7 +772,7 @@ export default function ApplyPage() {
           onClick={handleSendEmail}
           disabled={isSending || isScheduling || emailInvalid}
           title={emailInvalid ? EMAIL_ERROR_MESSAGE : undefined}
-          className={`bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white pl-4 pr-2 py-2.5 rounded-l-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 border-r border-emerald-500 ${fullWidth ? "flex-1" : ""}`}
+          className={`bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white pl-4 pr-2 py-2.5 rounded-l-full pl-5 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-95 border-r border-emerald-500 ${fullWidth ? "flex-1" : ""}`}
         >
           {isSending ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Wird gesendet...</>
@@ -741,7 +785,7 @@ export default function ApplyPage() {
           onClick={() => { setShowScheduleMenu(v => !v); setShowCustomDatePicker(false); }}
           disabled={isSending || isScheduling || emailInvalid}
           title={emailInvalid ? EMAIL_ERROR_MESSAGE : "Geplanten Sendezeitpunkt wählen"}
-          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-2 py-2.5 rounded-r-xl text-sm font-semibold flex items-center gap-0.5 transition-all shadow-md active:scale-95"
+          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2.5 rounded-r-full text-sm font-semibold flex items-center gap-0.5 transition-all active:scale-95"
         >
           {isScheduling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
@@ -754,7 +798,7 @@ export default function ApplyPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-x-4 bottom-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 sm:w-[360px]"
+              className="fixed inset-x-4 bottom-4 sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 sm:w-[360px]"
             >
               <div className="px-4 pt-3 pb-1 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Geplanter Versand</span>
@@ -763,7 +807,7 @@ export default function ApplyPage() {
                 </button>
               </div>
               <div className="text-[10px] text-slate-400 dark:text-slate-500 px-4 pb-2">{Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
                 {getScheduleOptions().map((opt) => (
                   <button
                     key={opt.label}
@@ -779,7 +823,7 @@ export default function ApplyPage() {
                 {!showCustomDatePicker ? (
                   <button
                     onClick={() => setShowCustomDatePicker(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-colors"
                   >
                     <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" /> Datum &amp; Uhrzeit wählen
                   </button>
@@ -790,13 +834,13 @@ export default function ApplyPage() {
                       value={customScheduleDate}
                       onChange={e => setCustomScheduleDate(e.target.value)}
                       min={new Date().toISOString().split("T")[0]}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-full bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                     />
                     <input
                       type="time"
                       value={customScheduleTime}
                       onChange={e => setCustomScheduleTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-full bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                     />
                     <button
                       onClick={() => {
@@ -808,7 +852,7 @@ export default function ApplyPage() {
                         }
                         handleScheduleSend(d);
                       }}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
                     >
                       Planen
                     </button>
@@ -827,47 +871,50 @@ export default function ApplyPage() {
   return (
     <>
     <div className="h-full w-full max-w-[1600px] mx-auto flex flex-col">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 lg:min-h-0">
         
         {/* Left Form Panel */}
-        <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-8 lg:pb-0">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 md:p-8 flex flex-col shrink-0 min-h-full">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-4 shrink-0">
-              <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <Building2 className="w-5 h-5" />
+        <div className="lg:col-span-1 flex flex-col h-full min-h-0 overflow-y-auto no-scrollbar pb-6 lg:pb-0">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 md:p-5 flex flex-col shrink-0 min-h-full lg:min-h-0 lg:flex-1 lg:shrink">
+            {/* Header. The mass-apply switch lives up here on the right rather
+                than in a full-width bar of its own, which cost a row of height
+                the page does not have to spare. */}
+            <div className="flex items-start justify-between gap-3 mb-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">Unternehmensinfos</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                    {isGenericMode ? "Eine Bewerbung für alle Unternehmen" : "Angaben zur Zielposition"}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Unternehmensinfos</h2>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  {isGenericMode ? "Eine Bewerbung für alle Unternehmen" : "Angaben zur Zielposition für Ihre Bewerbung"}
-                </p>
+
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isGenericMode}
+                  aria-label="Allgemeine Bewerbung"
+                  onClick={() => setIsGenericMode(v => !v)}
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${isGenericMode ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isGenericMode ? "translate-x-5" : ""}`} />
+                </button>
+                <span className={`text-[11px] font-medium leading-tight text-right transition-colors ${isGenericMode ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`}>
+                  Allgemeine<br />Bewerbung
+                </span>
               </div>
             </div>
-
-            {/* Generic ("mass-apply") toggle */}
-            <label className="flex items-center justify-between gap-3 mb-5 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer shrink-0">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Allgemeine Bewerbung</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Ohne Firmenbezug — nur die E-Mail-Adresse wird benötigt</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isGenericMode}
-                onClick={() => setIsGenericMode(v => !v)}
-                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${isGenericMode ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isGenericMode ? "translate-x-5" : ""}`} />
-              </button>
-            </label>
 
             <motion.div layout transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }} className="flex flex-col flex-1">
             <AnimatePresence mode="wait" initial={false}>
             {!isGenericMode ? (
-            <motion.div key="company-fields" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-5 flex flex-col flex-1">
+            <motion.div key="company-fields" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3 flex flex-col flex-1 min-h-0">
               {/* Section: Unternehmen */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Unternehmen</p>
                 <div className="relative">
                   <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
@@ -876,7 +923,7 @@ export default function ApplyPage() {
                     placeholder="Unternehmensname"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
 
@@ -885,7 +932,7 @@ export default function ApplyPage() {
                     <select
                       value={contactSalutation}
                       onChange={(e) => setContactSalutation(e.target.value)}
-                      className="w-full h-full pl-3 pr-7 sm:px-4 sm:pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 appearance-none"
+                      className="w-full h-full pl-3 pr-7 sm:px-4 sm:pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 appearance-none"
                     >
                       <option value=""></option>
                       <option value="Herr">Herr</option>
@@ -900,14 +947,14 @@ export default function ApplyPage() {
                       placeholder="Ansprechpartner (Nachname)"
                       value={contactPerson}
                       onChange={(e) => setContactPerson(e.target.value)}
-                      className="w-full pl-10 pr-3 sm:pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full pl-10 pr-3 sm:pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Section: Adresse */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Adresse</p>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="relative">
@@ -917,7 +964,7 @@ export default function ApplyPage() {
                       placeholder="Straße & Hausnr."
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
-                      className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full pl-10 pr-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                   <input
@@ -925,13 +972,13 @@ export default function ApplyPage() {
                     placeholder="PLZ & Stadt"
                     value={postalCity}
                     onChange={(e) => setPostalCity(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
 
               {/* Section: Kontakt */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Kontakt</p>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
@@ -941,7 +988,7 @@ export default function ApplyPage() {
                     value={companyEmail}
                     onChange={(e) => handleCompanyEmailChange(e.target.value)}
                     onBlur={handleCompanyEmailBlur}
-                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-full focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
                       companyEmailError
                         ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400"
                         : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
@@ -952,7 +999,7 @@ export default function ApplyPage() {
               </div>
 
               {/* Section: Stellenbeschreibung */}
-              <div className="flex-1 flex flex-col space-y-3">
+              <div className="flex-1 min-h-0 flex flex-col space-y-2">
                 <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">Stellenbeschreibung</p>
                 <div className="flex-1 flex flex-col relative">
                   <textarea
@@ -966,7 +1013,7 @@ export default function ApplyPage() {
                         setCompanyInfo(text);
                       }
                     }}
-                    className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[150px] pb-8"
+                    className="w-full flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl focus:bg-white dark:focus:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none min-h-[72px] pb-7"
                   />
                   <div className="absolute bottom-3 right-4 text-xs font-medium text-slate-400 dark:text-slate-500">
                     {companyInfo.trim().split(/\s+/).filter(Boolean).length} / 400 Wörter
@@ -978,7 +1025,7 @@ export default function ApplyPage() {
             <motion.div key="generic-setup" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col">
               {showGenericSetup ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 py-8">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <div className="max-w-xs">
@@ -993,7 +1040,7 @@ export default function ApplyPage() {
                     <button
                       onClick={handleGenerateGenericResume}
                       disabled={isGeneratingGeneric || isUploadingGeneric}
-                      className="flex-1 sm:flex-initial whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] disabled:opacity-70"
+                      className="flex-1 sm:flex-initial whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] disabled:opacity-70"
                     >
                       {isGeneratingGeneric ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Wird generiert...</>
@@ -1007,7 +1054,7 @@ export default function ApplyPage() {
                         genericFileInputRef.current?.click();
                       }}
                       disabled={isGeneratingGeneric || isUploadingGeneric}
-                      className="flex-1 sm:flex-initial whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-700 active:scale-[0.98] disabled:opacity-70"
+                      className="flex-1 sm:flex-initial whitespace-nowrap bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-700 active:scale-[0.98] disabled:opacity-70"
                     >
                       {isUploadingGeneric ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Wird hochgeladen...</>
@@ -1038,7 +1085,7 @@ export default function ApplyPage() {
                         value={companyEmail}
                         onChange={(e) => handleCompanyEmailChange(e.target.value)}
                         onBlur={handleCompanyEmailBlur}
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-full focus:bg-white dark:focus:bg-slate-700 focus:outline-none transition-all text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 ${
                           companyEmailError
                             ? "border-rose-400 dark:border-rose-600 focus:ring-2 focus:ring-rose-400"
                             : "border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500"
@@ -1048,7 +1095,7 @@ export default function ApplyPage() {
                     {companyEmailError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{companyEmailError}</p>}
                   </div>
 
-                  {companyEmail && renderSendScheduleActions(true)}
+                  {renderSendScheduleActions(true)}
                 </div>
               )}
             </motion.div>
@@ -1057,12 +1104,12 @@ export default function ApplyPage() {
             </motion.div>
 
             {!isGenericMode && (
-            <div className="mt-auto pt-6 flex flex-col sm:flex-row gap-4 sm:items-center shrink-0">
-              <div className="relative w-full sm:w-56">
+            <div className="mt-auto pt-3 flex flex-col sm:flex-row gap-2.5 sm:items-center shrink-0">
+              <div className="relative w-full sm:w-52">
                 <select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as "cover-letter" | "full-resume")}
-                  className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none pr-10"
+                  className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-700 dark:text-slate-200 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none appearance-none pr-10"
                 >
                   <option value="cover-letter">Nur Anschreiben</option>
                   <option value="full-resume">Bewerbungsunterlagen</option>
@@ -1072,7 +1119,7 @@ export default function ApplyPage() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || isUpdatingPdf}
-                className="w-full sm:flex-1 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
+                className="w-full sm:flex-1 whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-70"
               >
                 {isGenerating || isUpdatingPdf ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Wird generiert...</>
@@ -1087,9 +1134,9 @@ export default function ApplyPage() {
         </div>
 
         {/* Right Preview Panel */}
-        <div ref={previewSectionRef} className="lg:col-span-1 flex flex-col h-full pb-8 lg:pb-0">
+        <div ref={previewSectionRef} className="lg:col-span-1 flex flex-col h-full min-h-0 pb-6 lg:pb-0">
            {(isGenericMode ? genericReady && !genericSetupOpen : showPreview) && (
-             <div className="mb-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
+             <div className="mb-4 bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
                <div className="min-w-0 flex-1 w-full sm:w-auto">
                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                    {isGenericMode ? "Allgemeine Bewerbung" : "Generierte Datei"}
@@ -1101,22 +1148,11 @@ export default function ApplyPage() {
                        ? `Anschreiben_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`
                        : `Bewerbungsunterlagen_${companyName.toLowerCase().replace(/\s+/g, '_') || "unbekannt"}_${profile?.last_name || "Fateh"}.pdf`}
                  </p>
-                 {activePdfUrl && (
-                   isAttachmentReady ? (
-                     <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                       <Check className="w-3 h-3" /> Anhang bereit — Versand dauert nur Sekunden
-                     </p>
-                   ) : (
-                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                       <Loader2 className="w-3 h-3 animate-spin" /> Anhang wird im Hintergrund vorbereitet…
-                     </p>
-                   )
-                 )}
                </div>
                <div className="flex gap-2 w-full sm:w-auto shrink-0">
                  <button
                    onClick={handleDownload}
-                   className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
+                   className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 disabled:opacity-75 text-white px-5 py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
                  >
                    Herunterladen
                  </button>
@@ -1124,7 +1160,7 @@ export default function ApplyPage() {
                  {isGenericMode && (
                    <button
                      onClick={() => setGenericSetupOpen(true)}
-                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
                    >
                      Ändern
                    </button>
@@ -1136,7 +1172,7 @@ export default function ApplyPage() {
                  {!isGenericMode && (
                    <button
                      onClick={handleReset}
-                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+                     className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-1.5 transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
                    >
                      Neu
                    </button>
@@ -1145,10 +1181,10 @@ export default function ApplyPage() {
              </div>
            )}
 
-           <div className="bg-slate-200 dark:bg-slate-700 rounded-2xl border border-slate-300 dark:border-slate-600 flex flex-col flex-1 h-full min-h-[500px] lg:min-h-0 overflow-hidden relative w-full mx-auto">
+           <div className="bg-slate-200 dark:bg-slate-700 rounded-3xl border border-slate-300 dark:border-slate-600 flex flex-col flex-1 h-full min-h-[420px] lg:min-h-0 overflow-hidden relative w-full mx-auto">
 
              {activePdfUrl ? (
-               <div className="absolute inset-0 w-full h-full rounded-2xl overflow-hidden">
+               <div className="absolute inset-0 w-full h-full rounded-3xl overflow-hidden">
                  {isUpdatingPdf && (
                    <div className="absolute inset-0 z-10 bg-slate-200/50 backdrop-blur-sm flex items-center justify-center">
                      <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
@@ -1183,7 +1219,7 @@ export default function ApplyPage() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-sm overflow-hidden"
           >
             <div className="p-6 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
@@ -1199,13 +1235,13 @@ export default function ApplyPage() {
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
               <button
                 onClick={() => setShowLoginPrompt(false)}
-                className="flex-1 py-2.5 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                className="flex-1 py-2.5 px-4 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
               >
                 Abbrechen
               </button>
               <Link
                 href="/login"
-                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <LogIn className="w-4 h-4" />
                 Anmelden

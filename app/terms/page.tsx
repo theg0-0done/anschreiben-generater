@@ -3,7 +3,7 @@ import { FileText, ArrowLeft, Shield, AlertCircle, Mail, Scale } from "lucide-re
 import { Logo } from "@/app/components/Logo";
 
 export const metadata = {
-  title: "Nutzungsbedingungen – Bewerbify",
+  title: "Nutzungsbedingungen | Bewerbify",
   description: "Nutzungsbedingungen für die Bewerbify-Plattform.",
 };
 
@@ -167,10 +167,10 @@ export default function TermsPage() {
               <p className="text-slate-600 leading-relaxed">
                 Bei Fragen zu diesen Nutzungsbedingungen wenden Sie sich bitte an:{" "}
                 <a
-                  href="mailto:bosssaid2005@gmail.com"
+                  href="mailto:contact@fatehsaid.com"
                   className="text-blue-600 hover:text-blue-700 font-medium underline underline-offset-2"
                 >
-                  bosssaid2005@gmail.com
+                  contact@fatehsaid.com
                 </a>
               </p>
             </section>

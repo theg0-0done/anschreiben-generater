@@ -149,7 +149,7 @@ const STEPS = [
   {
     n: "03",
     title: "Senden oder planen",
-    body: "Fertiges PDF prüfen und sofort verschicken — oder auf Montagfrüh um 8 legen, wenn die Mail oben im Postfach landen soll.",
+    body: "Fertiges PDF prüfen und sofort verschicken, oder auf Montagfrüh um 8 legen, wenn die Mail oben im Postfach landen soll.",
     Mock: SendMock,
   },
 ];
@@ -190,7 +190,7 @@ export function HowItWorks() {
             <motion.li
               key={step.n}
               variants={fadeUp}
-              className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-600/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-900"
+              className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-600/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-900"
             >
               {/* Hover wash */}
               <div
@@ -199,14 +199,14 @@ export function HowItWorks() {
               />
 
               <div className="relative">
-                <span className="text-xs font-bold tracking-[0.2em] text-blue-600/70 dark:text-blue-400/70">
+                <span className="inline-block text-xs font-bold tracking-[0.2em] text-blue-600/70 transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:text-blue-600 dark:text-blue-400/70">
                   {step.n}
                 </span>
                 <h3 className="mt-3 text-xl font-bold text-slate-900 dark:text-white">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{step.body}</p>
               </div>
 
-              <div className="relative mt-6 rounded-2xl bg-slate-50/80 p-3 dark:bg-slate-800/40">
+              <div className="relative mt-6 rounded-[1.5rem] bg-slate-50/80 p-3 transition-colors duration-500 group-hover:bg-blue-50/60 dark:bg-slate-800/40 dark:group-hover:bg-slate-800/70">
                 <step.Mock still={still} />
               </div>
             </motion.li>

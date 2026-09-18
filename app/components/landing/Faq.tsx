@@ -8,11 +8,11 @@ import { EASE, fadeUp, stagger, inView } from "./motion";
 const FAQS = [
   {
     q: "Wie werden meine Google-Daten verwendet?",
-    a: "Bewerbify fordert genau eine Google-Berechtigung an: gmail.send. Damit darf die App in deinem Namen eine E-Mail versenden — nämlich die Bewerbung, die du zuvor in der App erstellt und freigegeben hast. Dein Posteingang, deine Kontakte und dein E-Mail-Verlauf werden nicht gelesen, nicht gespeichert und nicht verändert. Dein Google-Zugriffstoken wird AES-256-GCM-verschlüsselt gespeichert und ausschließlich für diesen Versand entschlüsselt. Es findet keine Weitergabe an Dritte statt, die Daten werden nicht für Werbung genutzt und nicht zum Trainieren von KI-Modellen verwendet. Bewerbify hält sich dabei an die Google API Services User Data Policy einschließlich der Limited-Use-Anforderungen. Du kannst den Zugriff jederzeit in deinem Google-Konto widerrufen.",
+    a: "Bewerbify fordert genau eine Google-Berechtigung an: gmail.send. Damit darf die App in deinem Namen eine E-Mail versenden, nämlich die Bewerbung, die du zuvor in der App erstellt und freigegeben hast. Dein Posteingang, deine Kontakte und dein E-Mail-Verlauf werden nicht gelesen, nicht gespeichert und nicht verändert. Dein Google-Zugriffstoken wird AES-256-GCM-verschlüsselt gespeichert und ausschließlich für diesen Versand entschlüsselt. Es findet keine Weitergabe an Dritte statt, die Daten werden nicht für Werbung genutzt und nicht zum Trainieren von KI-Modellen verwendet. Bewerbify hält sich dabei an die Google API Services User Data Policy einschließlich der Limited-Use-Anforderungen. Du kannst den Zugriff jederzeit in deinem Google-Konto widerrufen.",
   },
   {
     q: "Warum wird die Mail über mein eigenes Konto verschickt?",
-    a: "Weil eine Bewerbung von dir kommen sollte, nicht von einem Dienst. Die E-Mail landet beim Unternehmen mit deiner Adresse als Absender, taucht in deinem Gmail-Ordner „Gesendet“ auf, und eine Antwort geht direkt an dich zurück — ganz ohne Weiterleitung über uns.",
+    a: "Weil eine Bewerbung von dir kommen sollte, nicht von einem Dienst. Die E-Mail landet beim Unternehmen mit deiner Adresse als Absender, taucht in deinem Gmail-Ordner „Gesendet“ auf, und eine Antwort geht direkt an dich zurück, ganz ohne Weiterleitung über uns.",
   },
   {
     q: "Schreibt die KI für jedes Unternehmen einen eigenen Text?",
@@ -20,7 +20,7 @@ const FAQS = [
   },
   {
     q: "Kann ich den Versandzeitpunkt festlegen?",
-    a: "Ja. Neben „sofort senden“ kannst du jede Bewerbung auf einen Zeitpunkt legen — morgen früh, Montag um 8 Uhr oder ein frei gewähltes Datum. Geplante Mails findest du unter „Geplante Mails“, wo du sie verschieben, abbrechen oder nach einem Fehlversuch erneut senden kannst.",
+    a: "Ja. Neben „sofort senden“ kannst du jede Bewerbung auf einen Zeitpunkt legen: morgen früh, Montag um 8 Uhr oder ein frei gewähltes Datum. Geplante Mails findest du unter „Geplante Mails“, wo du sie verschieben, abbrechen oder nach einem Fehlversuch erneut senden kannst.",
   },
   {
     q: "Was passiert mit meinen hochgeladenen Unterlagen?",
@@ -28,7 +28,7 @@ const FAQS = [
   },
   {
     q: "Brauche ich ein Gmail-Konto?",
-    a: "Für den automatischen Versand ja — der läuft über die Gmail-Schnittstelle. Ohne Anmeldung kannst du dir die App trotzdem ansehen, und die fertigen Bewerbungsunterlagen lassen sich auch einfach als PDF herunterladen und von Hand verschicken.",
+    a: "Für den automatischen Versand ja, der läuft über die Gmail-Schnittstelle. Ohne Anmeldung kannst du dir die App trotzdem ansehen, und die fertigen Bewerbungsunterlagen lassen sich auch einfach als PDF herunterladen und von Hand verschicken.",
   },
 ];
 
@@ -66,7 +66,7 @@ export function Faq() {
               <motion.div
                 key={faq.q}
                 variants={fadeUp}
-                className={`overflow-hidden rounded-2xl border bg-white transition-colors duration-300 dark:bg-slate-900 ${
+                className={`group overflow-hidden rounded-[1.75rem] border bg-white transition-all duration-300 hover:border-blue-200 dark:bg-slate-900 dark:hover:border-blue-900 ${
                   isOpen
                     ? "border-blue-200 shadow-lg shadow-blue-600/5 dark:border-blue-900"
                     : "border-slate-200/80 dark:border-slate-800"
@@ -80,7 +80,7 @@ export function Faq() {
                     aria-controls={`faq-panel-${i}`}
                     className="flex w-full items-start justify-between gap-4 px-5 py-5 text-left sm:px-6"
                   >
-                    <span className="text-base font-semibold text-slate-900 sm:text-lg dark:text-white">
+                    <span className="text-base font-semibold text-slate-900 transition-transform duration-300 group-hover:translate-x-1 sm:text-lg dark:text-white">
                       {faq.q}
                     </span>
                     <motion.span

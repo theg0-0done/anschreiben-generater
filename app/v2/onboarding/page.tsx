@@ -241,11 +241,11 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Vorname</label>
-                  <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Nachname</label>
-                  <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
                 </div>
               </div>
 
@@ -257,7 +257,7 @@ export default function OnboardingPage() {
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(""); }}
                     onBlur={() => { if (email && !isValidEmail(email)) setEmailError(EMAIL_ERROR_MESSAGE); }}
-                    className={`w-full px-4 py-3 rounded-xl border bg-white/50 focus:bg-white focus:outline-none transition-all ${
+                    className={`w-full px-4 py-3 rounded-full border bg-white/50 focus:bg-white focus:outline-none transition-all ${
                       emailError ? "border-rose-400 focus:ring-2 focus:ring-rose-400" : "border-slate-200 focus:ring-2 focus:ring-blue-500"
                     }`}
                   />
@@ -265,29 +265,29 @@ export default function OnboardingPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
-                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Straße und Hausnummer</label>
-                  <input type="text" value={streetHouse} onChange={(e) => setStreetHouse(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input type="text" value={streetHouse} onChange={(e) => setStreetHouse(e.target.value)} className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">PLZ und Ort</label>
-                  <input type="text" value={postalCity} onChange={(e) => setPostalCity(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                  <input type="text" value={postalCity} onChange={(e) => setPostalCity(e.target.value)} className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
                 </div>
               </div>
 
                <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Persönliche Links</label>
-                <input type="text" value={personalLinks} onChange={(e) => setPersonalLinks(e.target.value)} placeholder="z.B. GitHub, LinkedIn, Portfolio" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                <input type="text" value={personalLinks} onChange={(e) => setPersonalLinks(e.target.value)} placeholder="z.B. GitHub, LinkedIn, Portfolio" className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
               </div>
             </div>
 
             <div className="mt-8 flex justify-end">
-              <button onClick={handleSavePersonalInfo} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-all active:scale-95">
+              <button onClick={handleSavePersonalInfo} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-6 py-3 rounded-full font-medium flex items-center gap-2 transition-all active:scale-95">
                 Weiter <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -319,7 +319,7 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Ziel-Ausbildungsberuf</label>
-                <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="z.B. Fachinformatiker für Anwendungsentwicklung" className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
+                <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="z.B. Fachinformatiker für Anwendungsentwicklung" className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Anschreiben-Seite im Lebenslauf</label>
@@ -336,7 +336,7 @@ export default function OnboardingPage() {
                     if (!coverLetterPageNumber || parseInt(coverLetterPageNumber, 10) < 1) setCoverLetterPageNumber("1");
                   }}
                   placeholder="z.B. 1 oder 2"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                  className="w-full px-4 py-3 rounded-full border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function OnboardingPage() {
                 onDragEnter={(e) => handleDragEnter(e, setIsCvDragging)}
                 onDragLeave={(e) => handleDragLeave(e, setIsCvDragging)}
                 onDrop={(e) => handleDrop(e, setCv, setIsCvDragging)}
-                className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors relative h-full flex flex-col justify-center ${
+                className={`block border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-colors relative h-full flex flex-col justify-center ${
                   isCvDragging
                     ? "border-purple-500 bg-purple-100/50"
                     : "border-purple-200 bg-purple-50/50 hover:bg-purple-50"
@@ -375,7 +375,7 @@ export default function OnboardingPage() {
                 onDragEnter={(e) => handleDragEnter(e, setIsResumeDragging)}
                 onDragLeave={(e) => handleDragLeave(e, setIsResumeDragging)}
                 onDrop={(e) => handleDrop(e, setResume, setIsResumeDragging)}
-                className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors relative h-full flex flex-col justify-center ${
+                className={`block border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-colors relative h-full flex flex-col justify-center ${
                   isResumeDragging
                     ? "border-emerald-500 bg-emerald-100/50"
                     : "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
@@ -399,7 +399,7 @@ export default function OnboardingPage() {
 
             <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-3">
               <button onClick={() => setStep(1)} className="text-slate-500 hover:text-slate-700 font-medium disabled:opacity-50" disabled={loading}>Zurück</button>
-              <button onClick={handleComplete} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/30">
+              <button onClick={handleComplete} disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-8 py-3 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/30">
                 {loading ? (
                    <span className="flex items-center gap-2">
                      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>

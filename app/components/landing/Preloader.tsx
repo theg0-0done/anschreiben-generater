@@ -72,7 +72,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
             transition={{ duration: 0.85, ease: EASE }}
             className="relative"
           >
-            <Logo tone="light" className="text-5xl sm:text-6xl" />
+            <Logo className="text-5xl sm:text-6xl" />
           </motion.div>
 
           <div className="relative mt-8 h-px w-40 overflow-hidden bg-white/10">

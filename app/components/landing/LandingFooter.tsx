@@ -31,7 +31,7 @@ const COLUMNS = [
     links: [
       { label: "Datenschutzerklärung", href: "/privacy" },
       { label: "Nutzungsbedingungen", href: "/terms" },
-      { label: "Kontakt", href: "mailto:bosssaid2005@gmail.com" },
+      { label: "Kontakt", href: "mailto:contact@fatehsaid.com" },
     ],
   },
 ];
@@ -48,7 +48,8 @@ export function FinalCta() {
           whileInView="show"
           viewport={inView}
           variants={stagger()}
-          className="relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-14 text-center sm:px-14 sm:py-20"
+          data-nav-tone="dark"
+          className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 px-6 py-14 text-center sm:px-14 sm:py-20"
         >
           {/* Photo wash behind the copy */}
           <Image
@@ -69,20 +70,20 @@ export function FinalCta() {
               Die nächste Bewerbung ist in einer Minute raus.
             </motion.h2>
             <motion.p variants={fadeUp} className="mx-auto mt-5 max-w-lg text-base text-slate-300">
-              Anmelden mit Google, Unterlagen einmal hinterlegen — und ab da nur noch Firma eintragen
+              Anmelden mit Google, Unterlagen einmal hinterlegen, und ab da nur noch Firma eintragen
               und senden.
             </motion.p>
             <motion.div variants={fadeUp} className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/login"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-xl shadow-blue-600/30 transition-all hover:bg-blue-500 active:scale-[0.98] sm:w-auto"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-500 active:scale-[0.98] sm:w-auto"
               >
                 Kostenlos starten
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/v2/apply"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-7 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-[0.98] sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full px-6 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300 sm:w-auto"
               >
                 Erst ansehen
               </Link>
@@ -116,7 +117,7 @@ export function LandingFooter() {
           <motion.div variants={fadeUp}>
             <Logo className="text-3xl" />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              KI-gestützte Bewerbungen für Ausbildung und Beruf — geschrieben, zusammengestellt und
+              KI-gestützte Bewerbungen für Ausbildung und Beruf: geschrieben, zusammengestellt und
               über dein eigenes Gmail-Konto versendet.
             </p>
           </motion.div>

@@ -8,6 +8,15 @@
   font-family: 'Modak', cursive, sans-serif;
 }
 
+/* Anchor jumps and programmatic scrolls glide instead of teleporting. Gated
+   on the motion preference, because a forced smooth scroll is exactly what
+   people who set that preference are trying to avoid. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Landing page typography: display face on headings, body face everywhere
    else. Scoped to .landing-type so the app itself keeps the system stack it
    was built against. */

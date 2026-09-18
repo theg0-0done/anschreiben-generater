@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getOAuth2ClientForUser, saveGmailCredentialsForUser, buildMimeMessage, sendMimeMessage } from "@/lib/gmail";
 import { createClient } from "@/lib/supabase/server";
-import { supabase as supabaseAdmin } from "@/lib/supabase";
 import { recordInstantSend } from "@/lib/scheduled-emails";
+import { parseAttachmentRef, readAttachment, materializeForSchedule } from "@/lib/attachments";
 
 export async function POST(request: NextRequest) {
   const t0 = performance.now();
@@ -15,37 +15,46 @@ export async function POST(request: NextRequest) {
   }
   const t1 = performance.now();
 
-  const { to, subject, body, pdfStoragePath, fileName, metadata } = await request.json();
+  const payload = await request.json();
+  const { to, subject, body, fileName, metadata } = payload;
 
-  if (!to || !subject || !body || !pdfStoragePath || !fileName) {
+  if (!to || !subject || !body || !fileName) {
     return NextResponse.json(
-      { error: "Fehlende Felder: to, subject, body, pdfStoragePath, fileName erforderlich." },
+      { error: "Fehlende Felder: to, subject, body und fileName erforderlich." },
       { status: 400 }
     );
   }
 
-  // The client uploads directly to Storage under its own user_id folder —
-  // reject anything that doesn't match, so nobody can point at someone
-  // else's (or an arbitrary) storage path.
-  if (typeof pdfStoragePath !== "string" || !pdfStoragePath.startsWith(`${user.id}/`)) {
+  const attachment = parseAttachmentRef(payload, user.id);
+  if (!attachment) {
     return NextResponse.json({ error: "Ungültiger Dateipfad." }, { status: 400 });
   }
 
   // Everything from here on is recorded in scheduled_emails either way, so a
   // send that fails still shows up in the list with its attachment intact and
   // can be retried from there.
-  const record = (error?: string) =>
-    recordInstantSend({
+  // The history row keeps a real path, so a failed send stays retryable. For a
+  // generic application that means snapshotting the stored resume, which is a
+  // server side copy and costs the sender nothing.
+  const record = async (error?: string) => {
+    const path =
+      attachment.kind === "uploaded"
+        ? attachment.path
+        : await materializeForSchedule(attachment, user.id);
+    if (!path) return;
+
+    await recordInstantSend({
       userId: user.id,
       contextId: metadata?.contextId ?? null,
       to,
       subject,
       body,
-      pdfStoragePath,
+      pdfStoragePath: path,
       fileName,
       metadata,
       error,
     });
+  };
 
   try {
     const credentials = await getOAuth2ClientForUser(user.id);
@@ -58,17 +67,15 @@ export async function POST(request: NextRequest) {
     }
     const { oauth2Client, tokens } = credentials;
 
-    // Download the already-uploaded PDF from Storage and base64-encode it
-    // server-side (fast, native Buffer conversion) instead of the browser
-    // doing a slow byte-by-byte encode and shipping an inflated JSON body.
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-      .from("scheduled-pdfs")
-      .download(pdfStoragePath);
-    if (downloadError || !fileData) {
+    // Read the PDF out of Storage and base64-encode it server side (fast,
+    // native Buffer conversion) instead of the browser doing a slow
+    // byte-by-byte encode and shipping an inflated JSON body.
+    const pdfBytes = await readAttachment(attachment, user.id);
+    if (!pdfBytes) {
       await record("PDF konnte nicht geladen werden.");
       return NextResponse.json({ error: "PDF konnte nicht geladen werden." }, { status: 502 });
     }
-    const pdfBase64 = Buffer.from(await fileData.arrayBuffer()).toString("base64");
+    const pdfBase64 = pdfBytes.toString("base64");
     const t2 = performance.now();
 
     // Listen for token refresh events to persist the new access token

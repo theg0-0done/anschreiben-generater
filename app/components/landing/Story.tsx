@@ -6,8 +6,15 @@ import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion
 import { Lock, MailX, KeyRound, Ban, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { fadeUp, scaleIn, stagger, inView } from "./motion";
+import { CountUp } from "./CountUp";
 
 /* ── About ─────────────────────────────────────────────────────────────── */
+
+const STATS = [
+  { to: 1, suffix: "×", label: "einrichten" },
+  { to: 60, prefix: "~", suffix: " s", label: "pro Bewerbung" },
+  { to: 0, label: "Mails gelesen" },
+];
 
 export function About() {
   const shouldReduce = useReducedMotion();
@@ -40,29 +47,28 @@ export function About() {
           <motion.div variants={fadeUp} className="mt-6 space-y-4 text-base leading-relaxed text-slate-600 dark:text-slate-300">
             <p>
               Wer eine Ausbildung sucht, schreibt keine drei Bewerbungen. Er schreibt dreißig. Und
-              weil jede einzelne Firma, Ansprechpartner und Stellenanzeige anders ist, wird aus
-              dreißig Bewerbungen dreißigmal dieselbe Fleißarbeit — bis irgendwann die Copy-Paste-Version
-              rausgeht, in der noch der Name der letzten Firma steht.
+              weil jede einzelne Firma, jeder Ansprechpartner und jede Stellenanzeige anders ist, wird
+              aus dreißig Bewerbungen dreißigmal dieselbe Fleißarbeit, bis irgendwann die
+              Copy-Paste-Version rausgeht, in der noch der Name der letzten Firma steht.
             </p>
             <p>
               Bewerbify nimmt dir genau diesen Teil ab. Deine Unterlagen liegen einmal im Profil.
               Für jede neue Stelle entsteht daraus ein eigenes Anschreiben, ein fertiges PDF und eine
               E-Mail, die aus <strong className="font-semibold text-slate-900 dark:text-white">deinem
-              Postfach</strong> kommt — mit deiner Adresse, deiner Signatur, deinem Namen.
+              Postfach</strong> kommt, mit deiner Adresse, deiner Signatur, deinem Namen.
             </p>
           </motion.div>
 
-          <motion.dl variants={fadeUp} className="mt-8 grid grid-cols-3 gap-4 border-t border-slate-200 pt-8 dark:border-slate-800">
-            {[
-              { k: "1×", v: "einrichten" },
-              { k: "~60 s", v: "pro Bewerbung" },
-              { k: "0", v: "Mails gelesen" },
-            ].map((stat) => (
-              <div key={stat.v}>
-                <dt className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-                  {stat.k}
+          <motion.dl
+            variants={fadeUp}
+            className="mt-8 grid grid-cols-3 gap-4 border-t border-slate-200 pt-8 dark:border-slate-800"
+          >
+            {STATS.map((stat) => (
+              <div key={stat.label} className="group">
+                <dt className="text-2xl font-extrabold tracking-tight text-slate-900 transition-colors duration-300 group-hover:text-blue-600 sm:text-3xl dark:text-white dark:group-hover:text-blue-400">
+                  <CountUp to={stat.to} prefix={stat.prefix} suffix={stat.suffix} />
                 </dt>
-                <dd className="mt-1 text-xs text-slate-500 dark:text-slate-400">{stat.v}</dd>
+                <dd className="mt-1 text-xs text-slate-500 dark:text-slate-400">{stat.label}</dd>
               </div>
             ))}
           </motion.dl>
@@ -78,7 +84,9 @@ export function About() {
         >
           <motion.div
             style={shouldReduce ? undefined : { y: backY }}
-            className="absolute right-0 top-0 h-[74%] w-[78%] overflow-hidden rounded-3xl shadow-2xl shadow-slate-900/10"
+            whileHover={shouldReduce ? undefined : { scale: 1.02 }}
+            transition={{ duration: 0.5 }}
+            className="absolute right-0 top-0 h-[74%] w-[78%] overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-900/10"
           >
             <Image
               src="/landing/workshop.webp"
@@ -91,7 +99,9 @@ export function About() {
 
           <motion.div
             style={shouldReduce ? undefined : { y: frontY }}
-            className="absolute bottom-0 left-0 h-[58%] w-[62%] overflow-hidden rounded-3xl border-4 border-white shadow-2xl shadow-slate-900/20 dark:border-slate-900"
+            whileHover={shouldReduce ? undefined : { scale: 1.03 }}
+            transition={{ duration: 0.5 }}
+            className="absolute bottom-0 left-0 h-[58%] w-[62%] overflow-hidden rounded-[2rem] border-4 border-white shadow-2xl shadow-slate-900/20 dark:border-slate-900"
           >
             <Image
               src="/landing/desk.webp"
@@ -106,11 +116,14 @@ export function About() {
           <motion.div
             animate={shouldReduce ? undefined : { y: [0, -9, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute right-2 top-[68%] rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-800/95"
+            className="absolute right-2 top-[68%] rounded-full border border-slate-200/80 bg-white/95 px-5 py-3 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-800/95"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-white">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
               Bewerbung gesendet
             </p>
           </motion.div>
@@ -126,7 +139,7 @@ const DATA_POINTS = [
   {
     icon: KeyRound,
     title: "Genau eine Berechtigung",
-    body: "Bewerbify fragt ausschließlich den Bereich gmail.send ab — die Erlaubnis, in deinem Namen zu senden. Mehr wird nicht angefordert.",
+    body: "Bewerbify fragt ausschließlich den Bereich gmail.send ab, also die Erlaubnis, in deinem Namen zu senden. Mehr wird nicht angefordert.",
   },
   {
     icon: MailX,
@@ -146,8 +159,14 @@ const DATA_POINTS = [
 ];
 
 export function DataUsage() {
+  const shouldReduce = useReducedMotion();
+
   return (
-    <section id="daten" className="relative overflow-hidden bg-slate-950 py-20 sm:py-28">
+    <section
+      id="daten"
+      data-nav-tone="dark"
+      className="relative overflow-hidden bg-slate-950 py-20 sm:py-28"
+    >
       {/* Ambient glow */}
       <div
         aria-hidden
@@ -171,7 +190,7 @@ export function DataUsage() {
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-4 text-base leading-relaxed text-slate-400">
             Bewerbify verschickt deine Bewerbung über dein eigenes Gmail-Konto. Damit das geht,
-            brauchen wir eine Berechtigung von dir — und wirklich nur diese eine.
+            brauchen wir eine Berechtigung von dir, und wirklich nur diese eine.
           </motion.p>
         </motion.div>
 
@@ -183,16 +202,35 @@ export function DataUsage() {
           className="mt-12 grid gap-4 sm:mt-16 sm:grid-cols-2"
         >
           {DATA_POINTS.map((point) => (
-            <motion.li
-              key={point.title}
-              variants={fadeUp}
-              className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm transition-colors duration-500 hover:border-blue-500/40 hover:bg-white/[0.07]"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600/15 text-blue-300 ring-1 ring-inset ring-blue-500/20">
-                <point.icon className="h-5 w-5" />
+            <motion.li key={point.title} variants={fadeUp} className="group relative">
+              {/* Spinning conic sweep, revealed on hover, clipped to the card's
+                  radius. The inner panel sits on top and leaves only a hairline
+                  of the sweep visible, which reads as a travelling border. */}
+              <div className="relative overflow-hidden rounded-[2rem] p-px">
+                <motion.div
+                  aria-hidden
+                  animate={shouldReduce ? undefined : { rotate: 360 }}
+                  transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+                  className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[160%] -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{
+                    background:
+                      "conic-gradient(from 0deg, transparent 0deg, transparent 250deg, #3b82f6 320deg, #7dd3fc 350deg, transparent 360deg)",
+                  }}
+                />
+                <div className="relative h-full rounded-[2rem] border border-white/10 bg-slate-950/90 p-6 transition-colors duration-500 group-hover:border-transparent group-hover:bg-slate-900/90">
+                  <motion.div
+                    whileHover={shouldReduce ? undefined : { rotate: -8, scale: 1.08 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/15 text-blue-300 ring-1 ring-inset ring-blue-500/20"
+                  >
+                    <point.icon className="h-5 w-5" />
+                  </motion.div>
+                  <h3 className="mt-5 text-lg font-bold text-white">{point.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400 transition-colors duration-500 group-hover:text-slate-300">
+                    {point.body}
+                  </p>
+                </div>
               </div>
-              <h3 className="mt-5 text-lg font-bold text-white">{point.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">{point.body}</p>
             </motion.li>
           ))}
         </motion.ul>
@@ -204,8 +242,8 @@ export function DataUsage() {
           variants={fadeUp}
           className="mt-8 text-sm text-slate-400"
         >
-          Die vollständigen Angaben — inklusive der Google&nbsp;API Services User Data Policy und
-          ihrer Limited-Use-Anforderungen — stehen in der{" "}
+          Die vollständigen Angaben, inklusive der Google&nbsp;API Services User Data Policy und
+          ihrer Limited-Use-Anforderungen, stehen in der{" "}
           <Link
             href="/privacy"
             className="inline-flex items-center gap-0.5 font-semibold text-blue-300 underline underline-offset-4 transition-colors hover:text-blue-200"
