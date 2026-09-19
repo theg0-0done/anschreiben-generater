@@ -33,7 +33,7 @@ export function About() {
         <motion.div initial="hidden" whileInView="show" viewport={inView} variants={stagger()}>
           <motion.span
             variants={fadeUp}
-            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400"
+            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-400"
           >
             Über Bewerbify
           </motion.span>
@@ -65,7 +65,7 @@ export function About() {
           >
             {STATS.map((stat) => (
               <div key={stat.label} className="group">
-                <dt className="text-2xl font-extrabold tracking-tight text-slate-900 transition-colors duration-300 group-hover:text-blue-600 sm:text-3xl dark:text-white dark:group-hover:text-blue-400">
+                <dt className="text-2xl font-extrabold tracking-tight text-slate-900 transition-colors duration-300 group-hover:text-brand-600 sm:text-3xl dark:text-white dark:group-hover:text-brand-400">
                   <CountUp to={stat.to} prefix={stat.prefix} suffix={stat.suffix} />
                 </dt>
                 <dd className="mt-1 text-xs text-slate-500 dark:text-slate-400">{stat.label}</dd>
@@ -173,13 +173,13 @@ export function DataUsage() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(70% 55% at 50% 0%, rgba(37,99,235,0.22) 0%, rgba(2,6,23,0) 65%)",
+            "radial-gradient(70% 55% at 50% 0%, rgba(221,0,0,0.20) 0%, rgba(2,6,23,0) 65%)",
         }}
       />
 
       <div className="relative mx-auto max-w-6xl px-5 sm:px-8">
         <motion.div initial="hidden" whileInView="show" viewport={inView} variants={stagger()} className="max-w-2xl">
-          <motion.span variants={fadeUp} className="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-400">
+          <motion.span variants={fadeUp} className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-400">
             Deine Daten
           </motion.span>
           <motion.h2
@@ -214,14 +214,14 @@ export function DataUsage() {
                   className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[160%] -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                   style={{
                     background:
-                      "conic-gradient(from 0deg, transparent 0deg, transparent 250deg, #3b82f6 320deg, #7dd3fc 350deg, transparent 360deg)",
+                      "conic-gradient(from 0deg, transparent 0deg, transparent 250deg, #dd0000 320deg, #ffcc00 350deg, transparent 360deg)",
                   }}
                 />
                 <div className="relative h-full rounded-[2rem] border border-white/10 bg-slate-950/90 p-6 transition-colors duration-500 group-hover:border-transparent group-hover:bg-slate-900/90">
                   <motion.div
                     whileHover={shouldReduce ? undefined : { rotate: -8, scale: 1.08 }}
                     transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/15 text-blue-300 ring-1 ring-inset ring-blue-500/20"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-600/15 text-brand-300 ring-1 ring-inset ring-brand-500/20"
                   >
                     <point.icon className="h-5 w-5" />
                   </motion.div>
@@ -246,7 +246,7 @@ export function DataUsage() {
           ihrer Limited-Use-Anforderungen, stehen in der{" "}
           <Link
             href="/privacy"
-            className="inline-flex items-center gap-0.5 font-semibold text-blue-300 underline underline-offset-4 transition-colors hover:text-blue-200"
+            className="inline-flex items-center gap-0.5 font-semibold text-brand-300 underline underline-offset-4 transition-colors hover:text-brand-200"
           >
             Datenschutzerklärung
             <ArrowUpRight className="h-3.5 w-3.5" />

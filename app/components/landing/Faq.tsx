@@ -41,7 +41,7 @@ export function Faq() {
         <motion.div initial="hidden" whileInView="show" viewport={inView} variants={stagger()} className="text-center">
           <motion.span
             variants={fadeUp}
-            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400"
+            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-400"
           >
             FAQ
           </motion.span>
@@ -66,9 +66,9 @@ export function Faq() {
               <motion.div
                 key={faq.q}
                 variants={fadeUp}
-                className={`group overflow-hidden rounded-[1.75rem] border bg-white transition-all duration-300 hover:border-blue-200 dark:bg-slate-900 dark:hover:border-blue-900 ${
+                className={`group overflow-hidden rounded-[1.75rem] border bg-white transition-all duration-300 hover:border-brand-200 dark:bg-slate-900 dark:hover:border-brand-900 ${
                   isOpen
-                    ? "border-blue-200 shadow-lg shadow-blue-600/5 dark:border-blue-900"
+                    ? "border-brand-200 shadow-lg shadow-brand-600/5 dark:border-brand-900"
                     : "border-slate-200/80 dark:border-slate-800"
                 }`}
               >
@@ -88,7 +88,7 @@ export function Faq() {
                       animate={{ rotate: isOpen ? 135 : 0 }}
                       transition={{ duration: 0.35, ease: EASE }}
                       className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
-                        isOpen ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800"
+                        isOpen ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800"
                       }`}
                     >
                       <Plus className="h-4 w-4" />

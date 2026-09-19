@@ -164,7 +164,7 @@ export function HowItWorks() {
         <motion.div initial="hidden" whileInView="show" viewport={inView} variants={stagger()}>
           <motion.span
             variants={fadeUp}
-            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400"
+            className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-400"
           >
             So funktioniert&rsquo;s
           </motion.span>
@@ -190,23 +190,23 @@ export function HowItWorks() {
             <motion.li
               key={step.n}
               variants={fadeUp}
-              className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-600/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-900"
+              className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all duration-500 hover:-translate-y-2 hover:border-brand-200 hover:shadow-2xl hover:shadow-brand-600/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-900"
             >
               {/* Hover wash */}
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-blue-50/0 to-blue-50/60 opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:to-blue-950/30"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand-50/0 to-brand-50/60 opacity-0 transition-opacity duration-500 group-hover:opacity-100 dark:to-brand-950/30"
               />
 
               <div className="relative">
-                <span className="inline-block text-xs font-bold tracking-[0.2em] text-blue-600/70 transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:text-blue-600 dark:text-blue-400/70">
+                <span className="inline-block text-xs font-bold tracking-[0.2em] text-brand-600/70 transition-transform duration-500 group-hover:-translate-y-0.5 group-hover:text-brand-600 dark:text-brand-400/70">
                   {step.n}
                 </span>
                 <h3 className="mt-3 text-xl font-bold text-slate-900 dark:text-white">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{step.body}</p>
               </div>
 
-              <div className="relative mt-6 rounded-[1.5rem] bg-slate-50/80 p-3 transition-colors duration-500 group-hover:bg-blue-50/60 dark:bg-slate-800/40 dark:group-hover:bg-slate-800/70">
+              <div className="relative mt-6 rounded-[1.5rem] bg-slate-50/80 p-3 transition-colors duration-500 group-hover:bg-brand-50/60 dark:bg-slate-800/40 dark:group-hover:bg-slate-800/70">
                 <step.Mock still={still} />
               </div>
             </motion.li>

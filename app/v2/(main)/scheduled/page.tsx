@@ -53,6 +53,68 @@ interface ScheduledItem {
   };
 }
 
+/** "21. Sep" */
+const formatDay = (iso: string) => {
+  const date = new Date(iso);
+  return isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+};
+
+/** "08:00" */
+const formatTime = (iso: string) => {
+  const date = new Date(iso);
+  return isNaN(date.getTime())
+    ? "--:--"
+    : date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+};
+
+/**
+ * One fact from a row, stacked as label / value / detail.
+ *
+ * Several of these sit side by side, which turns a wall of columns into a
+ * strip that scans in one pass and keeps the row height fixed no matter how
+ * long an address or a file name is.
+ */
+function DetailChip({
+  label,
+  value,
+  sub,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <span className="block text-[10px] font-medium text-slate-400 dark:text-slate-500 truncate">
+        {label}
+      </span>
+      <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+        {value}
+      </span>
+      {sub && (
+        <span className="block text-[10px] text-slate-400 dark:text-slate-500 truncate">{sub}</span>
+      )}
+    </>
+  );
+
+  const shell =
+    "w-[104px] shrink-0 rounded-2xl bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-center transition-colors";
+
+  return onClick ? (
+    <button type="button" onClick={onClick} className={`${shell} hover:bg-slate-100 dark:hover:bg-slate-800`}>
+      {content}
+    </button>
+  ) : (
+    <div className={shell} title={`${label}: ${value}${sub ?? ""}`}>
+      {content}
+    </div>
+  );
+}
+
 /** Quick picks in the reschedule dialog, labelled with icons rather than emoji. */
 const PRESETS = [
   { label: "Morgen um 08:30 Uhr", days: 1, hours: 8, minutes: 30, icon: Sunrise },
@@ -422,143 +484,130 @@ export default function ScheduledEmailsPage() {
           })}
         </div>
 
-        {/* Main Structured Table (inspired by attached screenshot) — desktop/tablet only */}
-        <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  <th className="py-3.5 pl-6 pr-4 font-semibold">Unternehmen & Kontakt</th>
-                  <th className="py-3.5 px-4 font-semibold">E-Mail</th>
-                  <th className="py-3.5 px-4 font-semibold">Anhänge</th>
-                  <th className="py-3.5 px-4 font-semibold">Geplantes Senden</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 pr-6 pl-4 text-right font-semibold">Aktionen</th>
+        {/* Desktop/tablet list. Rows are separate cards rather than a ruled
+            grid: border-separate with vertical spacing keeps real table
+            semantics and column alignment while each row floats on its own. */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left border-separate border-spacing-y-3">
+            <thead>
+              <tr className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">
+                <th className="pb-1 pl-6 pr-4 font-semibold">Unternehmen</th>
+                <th className="pb-1 px-4 font-semibold">Details</th>
+                <th className="pb-1 px-4 font-semibold text-center">Versand</th>
+                <th className="pb-1 px-4 font-semibold text-center">Status</th>
+                <th className="pb-1 pr-6 pl-4 text-right font-semibold">Aktionen</th>
+              </tr>
+            </thead>
+
+            <tbody className="text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-[1.5rem]">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
+                    Lade geplante E-Mails...
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-400 dark:text-slate-500">
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
-                      Lade geplante E-Mails...
-                    </td>
-                  </tr>
-                ) : filteredItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-400 dark:text-slate-500">
-                      <div className="max-w-sm mx-auto space-y-2">
-                        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500 mb-3">
-                          <CalendarClock className="w-6 h-6" />
-                        </div>
-                        <p className="font-semibold text-slate-700 dark:text-slate-200">Keine E-Mails gefunden</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">
-                          {searchQuery
-                            ? "Keine E-Mails entsprechen Ihrer Suchanfrage."
-                            : "Sie haben aktuell keine E-Mails in diesem Status geplant."}
-                        </p>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-900 rounded-[1.5rem]">
+                    <div className="max-w-sm mx-auto space-y-2">
+                      <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500 mb-3">
+                        <CalendarClock className="w-6 h-6" />
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredItems.map((item) => {
-                    const isOverdueOrFailed = item.status === "failed";
-                    const company = item.metadata?.companyName || "Unternehmen";
-                    const contact = item.metadata?.contactPerson || "Personalabteilung";
-                    const initial = company.charAt(0).toUpperCase() || "U";
-                    const relativeTime = getRelativeTime(item.scheduled_at, item.status);
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">Keine E-Mails gefunden</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        {searchQuery
+                          ? "Keine E-Mails entsprechen Ihrer Suchanfrage."
+                          : "Sie haben aktuell keine E-Mails in diesem Status geplant."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map((item) => {
+                  const isOverdueOrFailed = item.status === "failed";
+                  const company = item.metadata?.companyName || "Unternehmen";
+                  const contact = item.metadata?.contactPerson || "Personalabteilung";
+                  const initial = company.charAt(0).toUpperCase() || "U";
+                  const relativeTime = getRelativeTime(item.scheduled_at, item.status);
+                  const attachment = item.metadata?.attachments?.[0] || item.file_name;
+                  // A sent mail reports when it actually went out; everything
+                  // else reports when it is due to.
+                  const stamp = item.sent_at || item.scheduled_at;
 
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`group transition-colors ${
-                          isOverdueOrFailed
-                            ? "bg-rose-50/40 dark:bg-rose-950/30 hover:bg-rose-50/70 dark:hover:bg-rose-950/50"
-                            : "hover:bg-slate-50 dark:hover:bg-slate-800/80"
-                        }`}
-                      >
-                        {/* Name / Company (Dual-Line with Avatar) */}
-                        <td className="py-4 pl-6 pr-4">
-                          <div
+                  // Every cell carries the row's own background so the row
+                  // reads as one card; only the outer two are rounded.
+                  const cell = `py-4 align-middle transition-colors ${
+                    isOverdueOrFailed
+                      ? "bg-rose-50 dark:bg-rose-950/40 group-hover:bg-rose-100/70 dark:group-hover:bg-rose-950/60"
+                      : "bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/70"
+                  }`;
+
+                  return (
+                    <tr key={item.id} className="group">
+                      {/* Company */}
+                      <td className={`${cell} pl-6 pr-4 rounded-l-[1.5rem]`}>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewItem(item)}
+                          className="flex items-center gap-3 text-left group/link"
+                        >
+                          <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                            {initial}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-slate-900 dark:text-slate-50 group-hover/link:text-blue-600 dark:group-hover/link:text-blue-400 transition-colors truncate max-w-[190px]">
+                              {company}
+                            </span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400 truncate max-w-[190px]">
+                              {contact}
+                            </span>
+                          </span>
+                        </button>
+                      </td>
+
+                      {/* Detail chips */}
+                      <td className={`${cell} px-4`}>
+                        <div className="flex items-center gap-2">
+                          <DetailChip
+                            label="Empfänger"
+                            value={item.to_email.split("@")[0]}
+                            sub={`@${item.to_email.split("@")[1] ?? ""}`}
+                          />
+                          <DetailChip
+                            label="Anhang"
+                            value={attachment.replace(/\.pdf$/i, "")}
+                            sub="PDF"
                             onClick={() => setPreviewItem(item)}
-                            className="flex items-center gap-3 cursor-pointer group/link"
-                          >
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                              {initial}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-slate-900 dark:text-slate-50 group-hover/link:text-blue-600 transition-colors truncate max-w-[200px]">
-                                {company}
-                              </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
-                                {contact}
-                              </p>
-                            </div>
+                          />
+                          <div className="hidden xl:block">
+                            <DetailChip
+                              label="Erstellt"
+                              value={formatDay(item.created_at)}
+                              sub={formatTime(item.created_at)}
+                            />
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        {/* Company Email */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 text-xs">
-                            <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                            <a
-                              href={`mailto:${item.to_email}`}
-                              title={item.to_email}
-                              className="truncate max-w-[180px] hover:text-blue-600 transition-colors font-mono"
-                            >
-                              {item.to_email}
-                            </a>
-                          </div>
-                        </td>
+                      {/* The headline value of the row: when it goes out */}
+                      <td className={`${cell} px-4 text-center whitespace-nowrap`}>
+                        <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+                          {formatTime(stamp)}
+                        </div>
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          {relativeTime || formatDay(stamp)}
+                        </div>
+                      </td>
 
-                        {/* Attachments */}
-                        <td className="py-4 px-4">
-                          <div
-                            onClick={() => setPreviewItem(item)}
-                            className="flex flex-wrap items-center gap-1.5 cursor-pointer"
-                          >
-                            {item.metadata?.attachments && item.metadata.attachments.length > 0 ? (
-                              item.metadata.attachments.map((att, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                  title={att}
-                                >
-                                  <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                  <span className="truncate max-w-[220px]">{att}</span>
-                                </span>
-                              ))
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium border border-slate-200/60 dark:border-slate-700">
-                                <FileText className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                                {item.file_name}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                      {/* Status */}
+                      <td className={`${cell} px-4 text-center whitespace-nowrap`}>
+                        {renderStatus(item.status)}
+                      </td>
 
-                        {/* Scheduled Time & Countdown */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <div>
-                            <div className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-100 text-xs">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                              {formatDateTime(item.scheduled_at)}
-                            </div>
-                            {relativeTime && (
-                              <span className="inline-block mt-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
-                                {relativeTime}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-4 px-4 whitespace-nowrap">{renderStatus(item.status)}</td>
-
-                        {/* Actions (Pencil / Edit & Trash / Delete) */}
-                        <td className="py-4 pr-6 pl-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
+                      {/* Actions */}
+                      <td className={`${cell} pr-6 pl-4 text-right whitespace-nowrap rounded-r-[1.5rem]`}>
+                        <div className="flex items-center justify-end gap-1.5">
                             {/* Quick Preview Button */}
                             <button
                               onClick={() => setPreviewItem(item)}
@@ -601,17 +650,16 @@ export default function ScheduledEmailsPage() {
                               title={item.status === "pending" ? "Planung abbrechen" : "Löschen"}
                               className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-full transition-colors"
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Mobile Card List — small screens only */}

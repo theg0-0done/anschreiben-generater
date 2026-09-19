@@ -62,7 +62,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
             className="pointer-events-none absolute inset-0 opacity-70"
             style={{
               background:
-                "radial-gradient(60% 50% at 50% 45%, rgba(37,99,235,0.28) 0%, rgba(2,6,23,0) 70%)",
+                "radial-gradient(60% 50% at 50% 45%, rgba(221,0,0,0.26) 0%, rgba(2,6,23,0) 70%)",
             }}
           />
 
@@ -77,7 +77,7 @@ export function Preloader({ onDone }: { onDone: () => void }) {
 
           <div className="relative mt-8 h-px w-40 overflow-hidden bg-white/10">
             <motion.div
-              className="h-full bg-blue-500"
+              className="h-full bg-brand-600"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 1.25, ease: EASE, delay: 0.15 }}

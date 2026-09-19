@@ -118,7 +118,7 @@ export function LandingNav({ revealed, isSignedIn }: { revealed: boolean; isSign
           <div className="flex items-center gap-2">
             <Link
               href={ctaHref}
-              className="group hidden items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 active:scale-95 sm:inline-flex"
+              className="group hidden items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 active:scale-95 sm:inline-flex"
             >
               {ctaLabel}
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
@@ -184,7 +184,7 @@ export function LandingNav({ revealed, isSignedIn }: { revealed: boolean; isSign
                         onClick={() => setMenuOpen(false)}
                         className="group flex items-baseline gap-3 border-b border-white/5 py-4 text-[1.75rem] font-bold text-white"
                       >
-                        <span className="w-6 text-xs font-semibold text-blue-400/70">
+                        <span className="w-6 text-xs font-semibold text-brand-400/80">
                           {String(i + 1).padStart(2, "0")}
                         </span>
                         <span className="transition-transform duration-300 group-active:translate-x-1">
@@ -210,7 +210,7 @@ export function LandingNav({ revealed, isSignedIn }: { revealed: boolean; isSign
                           className="group flex items-center justify-between rounded-full px-1 py-2.5 text-base text-slate-300 transition-colors hover:text-white"
                         >
                           {link.label}
-                          <ArrowUpRight className="h-4 w-4 text-slate-600 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-blue-400" />
+                          <ArrowUpRight className="h-4 w-4 text-slate-600 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-brand-400" />
                         </Link>
                       </li>
                     ))}
@@ -249,7 +249,7 @@ export function LandingNav({ revealed, isSignedIn }: { revealed: boolean; isSign
                   <Link
                     href={ctaHref}
                     onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-500 active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-brand-700 active:scale-[0.98]"
                   >
                     {ctaLabel}
                     <ArrowRight className="h-4 w-4" />

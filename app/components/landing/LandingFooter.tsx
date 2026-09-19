@@ -76,14 +76,14 @@ export function FinalCta() {
             <motion.div variants={fadeUp} className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/login"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-blue-500 active:scale-[0.98] sm:w-auto"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-brand-700 active:scale-[0.98] sm:w-auto"
               >
                 Kostenlos starten
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <Link
                 href="/v2/apply"
-                className="inline-flex w-full items-center justify-center rounded-full border border-current px-7 py-4 text-base font-semibold text-white transition-colors hover:text-blue-300 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-full border border-current px-7 py-4 text-base font-semibold text-white transition-colors hover:text-brand-300 sm:w-auto"
               >
                 Erst ansehen
               </Link>
@@ -94,7 +94,7 @@ export function FinalCta() {
               aria-hidden
               animate={shouldReduce ? undefined : { opacity: [0.35, 0.6, 0.35] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="pointer-events-none absolute -bottom-24 left-1/2 h-48 w-[36rem] -translate-x-1/2 rounded-full bg-blue-500/30 blur-[90px]"
+              className="pointer-events-none absolute -bottom-24 left-1/2 h-48 w-[36rem] -translate-x-1/2 rounded-full bg-brand-600/25 blur-[90px]"
             />
           </div>
         </motion.div>
@@ -132,7 +132,7 @@ export function LandingFooter() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="group inline-flex items-center text-sm text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+                      className="group inline-flex items-center text-sm text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400"
                     >
                       {link.label}
                       <ArrowRight className="ml-1 h-3 w-3 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
